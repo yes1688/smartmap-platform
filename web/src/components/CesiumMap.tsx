@@ -473,54 +473,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
       // 存儲 avatar 實例以便後續更新
       (window as any).avatarInstances = avatarInstances;
 
-      // 🎮 增強版點擊事件處理 - 支援選中其他玩家的兔子玩偶
-      viewer.cesiumWidget.screenSpaceEventHandler.setInputAction((event: any) => {
-        console.log('🖱️ 點擊事件觸發！位置:', event.position);
-
-        const pickedObject = viewer.scene.pick(event.position);
-        console.log('🎯 點擊檢測結果:', pickedObject);
-
-        if (Cesium.defined(pickedObject)) {
-          console.log('✅ 有檢測到物體');
-
-          if (Cesium.defined(pickedObject.id)) {
-            const entity = pickedObject.id;
-            console.log('🔍 檢查實體:', entity);
-            console.log('📋 實體屬性:', entity.properties);
-
-            if (entity.properties && entity.properties.playerId) {
-              const playerId = entity.properties.playerId.getValue();
-              const playerName = entity.properties.playerName?.getValue() || 'Unknown Player';
-              const isCurrentPlayer = entity.properties.isCurrentPlayer?.getValue() || false;
-
-              console.log(`🎮 成功點擊兔子玩偶: ${playerName} (${playerId}) ${isCurrentPlayer ? '[當前玩家]' : '[其他玩家]'}`);
-              addMessage('success', '玩家選中', `🐰 選中玩家: ${playerName} ${isCurrentPlayer ? '(你的兔子)' : '(其他兔子)'}`);
-
-              // 開始走路動畫
-              const avatarInstances = (window as any).avatarInstances as Map<string, ReturnType<typeof addThreeJsAvatarToCesium>>;
-              if (avatarInstances && avatarInstances.has(playerId)) {
-                const avatarInstance = avatarInstances.get(playerId);
-                if (avatarInstance) {
-                  avatarInstance.startWalkingAnimation();
-                  console.log(`🚶 開始 ${playerName} 的可愛跳躍動畫`);
-                  addMessage('info', '動畫播放', `🐰 ${playerName} 開始跳躍表演！`);
-                } else {
-                  console.warn('⚠️ 找不到玩偶實例');
-                }
-              } else {
-                console.warn('⚠️ avatarInstances 不存在或沒有這個玩家ID:', playerId);
-                console.log('🔍 當前可用的玩偶:', avatarInstances ? Array.from(avatarInstances.keys()) : '無');
-              }
-            } else {
-              console.log('ℹ️ 點擊的不是兔子玩偶（沒有playerId屬性）');
-            }
-          } else {
-            console.log('ℹ️ 檢測到物體但沒有實體ID');
-          }
-        } else {
-          console.log('ℹ️ 點擊空白地區');
-        }
-      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      // 點擊事件已移除 - 避免玩偶消失問題
 
       addMessage('success', '玩偶系統', `已創建 ${demoPlayers.length} 個可愛兔子玩偶！`);
       addMessage('info', '💡 使用提示', '請對AI說：「移動兔子到XX位置」來控制兔子玩偶移動');
@@ -787,7 +740,6 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
           {/* 操作提示 */}
           <div class="text-xs text-blue-200 bg-blue-500/20 p-2 rounded space-y-1">
             <div>💡 點擊地圖任意處快速飛行到該位置</div>
-            <div>🐰 點擊兔子玩偶可查看詳細資訊</div>
             <div>🤖 <strong>請對AI說：「移動兔子到XX位置」</strong></div>
           </div>
         </div>
