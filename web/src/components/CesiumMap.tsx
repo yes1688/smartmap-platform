@@ -290,18 +290,33 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
       });
       console.log('✅ CesiumJS Viewer Created:', viewer);
 
-      // 啟用立體建築物和地形
+      // 啟用立體建築物和地形 + Google地圖底圖
       const load3DFeatures = async () => {
         try {
-          // 使用 Cesium OSM Buildings - 這是免費的3D建築圖層
+          // 1. 添加Google Maps街道地圖 (標準底圖)
+          const googleMapsImageryProvider = new Cesium.UrlTemplateImageryProvider({
+            url: 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+            credit: '© Google Maps'
+          });
+
+          // 將Google Maps設為底圖
+          viewer.imageryLayers.removeAll();
+          const googleLayer = viewer.imageryLayers.addImageryProvider(googleMapsImageryProvider);
+
+          // 調整圖像質量
+          googleLayer.brightness = 1.0;
+          googleLayer.contrast = 1.1;
+          googleLayer.saturation = 1.2;
+
+          // 2. 使用 Cesium OSM Buildings - 立體建築圖層
           const buildingsProvider = await Cesium.createOsmBuildingsAsync();
           viewer.scene.primitives.add(buildingsProvider);
 
-          // 啟用地形
+          // 3. 啟用地形
           viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
-          addMessage('success', '地圖樣式', '🏢 已載入立體建築地圖');
-          console.log('✅ 立體建築地圖載入成功');
+          addMessage('success', '地圖樣式', '🗺️ 已載入Google街道地圖 + 立體建築');
+          console.log('✅ Google地圖載入成功');
         } catch (error) {
           console.warn('⚠️ 立體建築載入失敗，使用預設地圖');
           addMessage('warning', '地圖樣式', '使用預設地圖');
