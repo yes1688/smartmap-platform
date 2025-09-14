@@ -31,6 +31,14 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
     isTracking: false
   });
 
+  // 點擊狀態管理 - 兩階段縮放系統
+  const [clickState, setClickState] = createSignal({
+    lastClickPosition: { lat: 0, lng: 0 },
+    isFirstClick: true,
+    clickRadius: 0.05, // 判斷是否點擊同一位置的容差範圍（約5公里）
+    lastClickTime: 0
+  });
+
   const [cameraInfo, setCameraInfo] = createSignal({
     heading: 0,
     pitch: -90,
@@ -308,16 +316,38 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
           googleLayer.contrast = 1.1;
           googleLayer.saturation = 1.2;
 
-          // 2. 使用 Cesium OSM Buildings - 立體建築圖層
+          // 2. 載入Minecraft風格建築 🎮
           const buildingsProvider = await Cesium.createOsmBuildingsAsync();
+
+          // 應用 Minecraft 風格建築顏色 - 暫時使用單一隨機色
+          // 由於 CesiumJS 3DTile 的限制，我們先使用單一但隨機的顏色
+          const minecraftColors = [
+            '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD',
+            '#FF7F50', '#98D8C8', '#F39C12', '#E74C3C', '#9B59B6', '#3498DB',
+            '#2ECC71', '#F1C40F', '#E67E22', '#1ABC9C'
+          ];
+
+          const selectedColor = minecraftColors[Math.floor(Math.random() * minecraftColors.length)];
+          buildingsProvider.style = new Cesium.Cesium3DTileStyle({
+            color: `color('${selectedColor}')`
+          });
+
           viewer.scene.primitives.add(buildingsProvider);
+
+          console.log('✅ Minecraft風格建築載入成功');
+          addMessage('success', '地圖樣式', '🎮 已載入Minecraft風格建築');
+
+          // 添加環境光照效果，讓方塊更立體
+          viewer.scene.globe.enableLighting = true;
+          viewer.scene.light.intensity = 1.5;
 
           // 3. 啟用地形
           viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
-          addMessage('success', '地圖樣式', '🗺️ 已載入Google街道地圖 + 立體建築');
+          addMessage('success', '地圖樣式', '🧱 已載入Google街道地圖 + Minecraft風格建築');
           console.log('✅ Google地圖載入成功');
         } catch (error) {
+          console.error('❌ 立體建築載入失敗:', error);
           console.warn('⚠️ 立體建築載入失敗，使用預設地圖');
           addMessage('warning', '地圖樣式', '使用預設地圖');
         }
@@ -374,14 +404,135 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
 
           console.log(`🎯 點擊位置: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
 
-          // 添加點擊消息
-          addMessage('info', '地圖導航', `飛行至: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`);
+          const currentTime = Date.now();
+          const currentState = clickState();
 
-          // 飛行到點擊位置
-          viewer!.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, 100000),
-            duration: 1.5
-          });
+          // 計算是否點擊在同一位置附近
+          const latDiff = Math.abs(latitude - currentState.lastClickPosition.lat);
+          const lngDiff = Math.abs(longitude - currentState.lastClickPosition.lng);
+          const isSameLocation = latDiff < currentState.clickRadius && lngDiff < currentState.clickRadius;
+
+          // 檢查是否是快速連續點擊（10秒內）
+          const isQuickClick = (currentTime - currentState.lastClickTime) < 10000;
+
+          // 調試日誌
+          console.log(`🔍 調試信息:`);
+          console.log(`  lastPosition:`, currentState.lastClickPosition);
+          console.log(`  currentPosition:`, { lat: latitude, lng: longitude });
+          console.log(`  latDiff: ${latDiff.toFixed(6)}, lngDiff: ${lngDiff.toFixed(6)}`);
+          console.log(`  clickRadius: ${currentState.clickRadius}`);
+          console.log(`  isSameLocation: ${isSameLocation}`);
+          console.log(`  isQuickClick: ${isQuickClick} (timeDiff: ${currentTime - currentState.lastClickTime}ms)`);
+          console.log(`  isFirstClick: ${currentState.isFirstClick}`);
+
+          let newHeight: number;
+          let newPitch: number;
+          let message: string;
+
+          if (currentState.isFirstClick || !isSameLocation || !isQuickClick) {
+            // 第一階段：Zoom out 到表面上空獲得全景視野
+            newHeight = 5000; // 5公里高度，俯瞰視角
+            newPitch = Cesium.Math.toRadians(-60); // 60度俯角
+            message = `🌍 第一階段 - 表面全景視野: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+
+            // 更新狀態為第二階段準備
+            setClickState({
+              lastClickPosition: { lat: latitude, lng: longitude },
+              isFirstClick: false,
+              clickRadius: currentState.clickRadius,
+              lastClickTime: currentTime
+            });
+
+            // 飛行到點擊位置的俯瞰視角
+            viewer!.camera.flyTo({
+              destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
+              duration: 1.5,
+              orientation: {
+                heading: Cesium.Math.toRadians(0), // 朝北
+                pitch: newPitch,
+                roll: 0.0
+              }
+            });
+
+          } else {
+            // 第二階段：智能 Zoom in 進入近距離角度視角檢視
+            // 先獲取地形高度，避免在山區時鑽入地表
+            const cartographic = Cesium.Cartographic.fromDegrees(longitude, latitude);
+
+            // 異步獲取地形高度
+            const promise = Cesium.sampleTerrainMostDetailed(viewer!.terrainProvider, [cartographic]);
+            promise.then((updatedPositions) => {
+              const terrainHeight = updatedPositions[0].height || 0; // 地表高度（米）
+
+              // 智能計算安全高度：地表高度 + 至少200米緩衝
+              const safeHeight = Math.max(terrainHeight + 200, 200);
+
+              // 如果是高山地區，增加更多緩衝
+              if (terrainHeight > 1000) {
+                newHeight = terrainHeight + 500; // 高山區域：地表 + 500米
+                message = `🏔️ 第二階段 - 山區視角檢視 (地表+${(newHeight - terrainHeight).toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+              } else if (terrainHeight > 100) {
+                newHeight = terrainHeight + 300; // 丘陵地區：地表 + 300米
+                message = `🌄 第二階段 - 丘陵視角檢視 (地表+${(newHeight - terrainHeight).toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+              } else {
+                newHeight = Math.max(terrainHeight + 200, 200); // 平地：地表 + 200米，最低200米
+                message = `🔍 第二階段 - 角度視角檢視 (${newHeight.toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+              }
+
+              newPitch = Cesium.Math.toRadians(-30); // 30度俯角
+
+              // 重置狀態，為下次點擊做準備
+              setClickState({
+                lastClickPosition: { lat: 0, lng: 0 },
+                isFirstClick: true,
+                clickRadius: currentState.clickRadius,
+                lastClickTime: currentTime
+              });
+
+              // 飛行到安全的近距離角度視角
+              viewer!.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
+                duration: 1.2,
+                orientation: {
+                  heading: Cesium.Math.toRadians(45), // 東北方向
+                  pitch: newPitch,
+                  roll: 0.0
+                }
+              });
+
+              // 更新消息
+              addMessage('info', '地圖導航', message);
+            }).catch(() => {
+              // 如果地形數據獲取失敗，使用安全的默認高度
+              newHeight = 500; // 預設500米，比較安全
+              message = `🔍 第二階段 - 安全視角檢視 (${newHeight}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+
+              setClickState({
+                lastClickPosition: { lat: 0, lng: 0 },
+                isFirstClick: true,
+                clickRadius: currentState.clickRadius,
+                lastClickTime: currentTime
+              });
+
+              viewer!.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
+                duration: 1.2,
+                orientation: {
+                  heading: Cesium.Math.toRadians(45),
+                  pitch: Cesium.Math.toRadians(-30),
+                  roll: 0.0
+                }
+              });
+
+              addMessage('info', '地圖導航', message);
+            });
+
+            // 提前顯示處理中的消息
+            message = `🔄 正在計算安全高度...`;
+          }
+
+          // 添加點擊消息
+          addMessage('info', '地圖導航', message);
 
           props.onPlayerMove(latitude, longitude);
         }
