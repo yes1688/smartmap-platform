@@ -10,7 +10,7 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
     {
       id: '1',
       sender: 'ai',
-      message: '您好！我是智能空間平台的AI助手，很高興為您服務！有什麼我可以幫助您的嗎？',
+      message: '您好！我是智慧空間平台的AI助手，很高興為您服務！有什麼我可以幫助您的嗎？',
       timestamp: Date.now() - 5000,
     },
   ]);
@@ -64,7 +64,7 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
     const lowerQuery = query.toLowerCase();
 
     const quickResponses: Record<string, string> = {
-      '你好': '您好！我是智能空間平台的AI助手，很高興為您服務！有什麼我可以幫助您的嗎？',
+      '你好': '您好！我是智慧空間平台的AI助手，很高興為您服務！有什麼我可以幫助您的嗎？',
       '怎麼玩': '這是一個結合3D地圖和收集遊戲的平台！您可以：\n• 在地圖上移動探索\n• 收集散落的物品獲得分數\n• 發現歷史景點聆聽介紹\n• 使用語音控制與我對話',
       '語音控制': '您可以使用以下語音指令：\n• "導航到..." - 地圖導航\n• "收集附近物品" - 自動收集\n• "介紹這個地方" - 獲取景點資訊\n• "我的分數" - 查看遊戲狀態',
       '分數': '您可以透過以下方式獲得分數：\n• 收集地圖上的物品（10-100分）\n• 發現歷史景點（25分）\n• 完成特殊任務',

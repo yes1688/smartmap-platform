@@ -21,7 +21,7 @@ export function WelcomeModal(props: WelcomeModalProps) {
           <div class="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-center">
             <div class="text-3xl mb-2">🎮</div>
             <h2 class="text-xl font-bold text-white mb-1">溫馨提醒</h2>
-            <p class="text-emerald-100 text-sm">歡迎來到智能空間平台</p>
+            <p class="text-emerald-100 text-sm">歡迎來到智慧空間平台</p>
           </div>
 
           {/* 內容區域 */}

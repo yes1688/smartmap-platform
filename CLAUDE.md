@@ -1,7 +1,7 @@
 # Claude Code 工作記憶檔
 
 ## 專案概述
-**專案名稱**: 智能空間平台 (Intelligent Spatial Platform)
+**專案名稱**: 智慧空間平台 (Intelligent Spatial Platform)
 **技術棧**: Go + SolidJS + CesiumJS + PostgreSQL + Ollama + WebSocket
 **業務領域**: 3D 地圖視覺化、AI 語音互動、遊戲化教育平台
 

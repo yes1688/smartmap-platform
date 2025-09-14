@@ -1,6 +1,6 @@
-# 智能空間平台 (Intelligent Spatial Platform)
+# 智慧空間平台 (Intelligent Spatial Platform)
 
-> 一個結合 AI、語音控制和 3D 地圖的智能空間平台，用於應徵作品展示
+> 一個結合 AI、語音控制和 3D 地圖的智慧空間平台，用於應徵作品展示
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -9,7 +9,7 @@
 ## 🌟 專案特色
 
 - **🗺️ 3D 地圖視覺化**: 基於 CesiumJS 的高品質 3D 地球儀
-- **🤖 AI 智能對話**: 整合 Ollama 本地 LLM 進行智能互動
+- **🤖 AI 智慧對話**: 整合 Ollama 本地 LLM 進行智慧互動
 - **🎤 語音控制**: 支援繁體中文語音識別與合成
 - **🎮 互動遊戲**: 物品收集、分數系統與等級進階
 - **🏛️ 歷史景點**: 自動介紹台灣歷史文化景點

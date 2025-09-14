@@ -1,4 +1,4 @@
-# 智能空間平台前端 (SolidJS)
+# 智慧空間平台前端 (SolidJS)
 
 基於 SolidJS 的現代化前端應用程式，結合 CesiumJS 3D 地圖、語音控制和 AI 聊天功能。
 

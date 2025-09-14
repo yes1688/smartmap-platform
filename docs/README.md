@@ -1,14 +1,14 @@
-# 📋 智能空間平台文檔管理系統
+# 📋 智慧空間平台文檔管理系統
 
 ## 🌟 系統概述
 
-歡迎使用**智能空間平台專項文檔管理系統**！這是一套專為現代軟體開發專案設計的智能文檔管理解決方案，提供標準化的專案管理流程和高效的文檔追蹤功能。
+歡迎使用**智慧空間平台專項文檔管理系統**！這是一套專為現代軟體開發專案設計的智能文檔管理解決方案，提供標準化的專案管理流程和高效的文檔追蹤功能。
 
 ### 🎯 核心價值
 - **📅 精確時間管理**: YYYYMMDD_HHMMSS 時間戳系統，精確到秒的專案追蹤
 - **🔄 標準化流程**: 5分鐘快速建立計畫，統一品質標準
 - **📊 完整生命週期**: ACTIVE→COMPLETED→ARCHIVED 狀態追蹤
-- **📝 智能模板**: 針對智能空間平台優化的文檔模板
+- **📝 智能模板**: 針對智慧空間平台優化的文檔模板
 - **🎛️ 靈活適配**: 支援 Go、CesiumJS、AI 語音等技術棧
 
 ## 🏗️ 系統架構
@@ -105,7 +105,7 @@ vim docs/PROJECT_INDEX.md
 3. 更新 PROJECT_INDEX.md 索引
 4. 記錄變更原因和時間
 
-## 🛠️ 智能空間平台專項功能
+## 🛠️ 智慧空間平台專項功能
 
 ### 🏗️ 技術棧整合
 - **後端**: Go + Gin 框架整合考量
@@ -204,7 +204,7 @@ cp docs/templates/ANALYSIS_TEMPLATE.md "docs/plans/active/${TIMESTAMP}_AI_Model_
 - [ANALYSIS_TEMPLATE.md](./templates/ANALYSIS_TEMPLATE.md) - 分析報告模板
 
 ### 🔗 外部連結
-- [智能空間平台主專案](../README.md)
+- [智慧空間平台主專案](../README.md)
 - [CesiumJS 官方文檔](https://cesium.com/learn/)
 - [Ollama 使用指南](https://ollama.ai/docs)
 - [PostGIS 文檔](https://postgis.net/documentation/)

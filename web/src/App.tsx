@@ -176,7 +176,7 @@ const App: Component = () => {
       {/* Global Loading Overlay */}
       <Show when={uiState.isLoading}>
         <div class="fixed inset-0 z-[100] pointer-events-auto">
-          <LoadingOverlay message="載入智能空間平台..." />
+          <LoadingOverlay message="載入智慧空間平台..." />
         </div>
       </Show>
 

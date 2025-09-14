@@ -1,7 +1,7 @@
-# 📋 智能空間平台專案計畫索引中心
+# 📋 智慧空間平台專案計畫索引中心
 
 ## 🎯 專案概述
-**專案名稱**: 智能空間平台 (Intelligent Spatial Platform)
+**專案名稱**: 智慧空間平台 (Intelligent Spatial Platform)
 **技術棧**: Go + CesiumJS + PostgreSQL + Ollama + WebSocket
 **業務領域**: 3D 地圖視覺化、AI 語音互動、遊戲化教育平台
 **最後更新**: 2025-09-14

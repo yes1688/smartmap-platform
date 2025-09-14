@@ -28,7 +28,7 @@ const Header: Component<HeaderProps> = (props) => {
                 </svg>
               </div>
               <div>
-                <h1 class="text-heading-sm text-primary">智能空間平台</h1>
+                <h1 class="text-heading-sm text-primary">智慧空間平台</h1>
                 <p class="text-body-sm text-secondary">Intelligent Spatial Platform</p>
               </div>
             </div>

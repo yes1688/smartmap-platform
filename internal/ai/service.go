@@ -93,7 +93,7 @@ func (s *Service) ProcessVoiceCommand(command string, playerLocation *geo.Locati
 請用繁體中文回應，保持友善和有幫助的語調。`,
 		command, playerLocation.Latitude, playerLocation.Longitude)
 
-	return s.Chat(prompt, "你是一位智能空間平台的AI助手，專門協助用戶進行地圖導航、歷史景點探索和互動遊戲。")
+	return s.Chat(prompt, "你是一位智慧空間平台的AI助手，專門協助用戶進行地圖導航、歷史景點探索和互動遊戲。")
 }
 
 func (s *Service) GenerateGameResponse(action, result string) (string, error) {

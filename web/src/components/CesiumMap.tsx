@@ -58,7 +58,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
       id: 1,
       type: 'success',
       title: '系統啟動',
-      content: '智能空間平台已成功初始化',
+      content: '智慧空間平台已成功初始化',
       timestamp: new Date(),
       read: false
     },

@@ -21,7 +21,7 @@ const LoadingOverlay: Component<LoadingOverlayProps> = (props) => {
       </div>
 
       <div class="text-sm text-gray-600">
-        正在初始化智能空間平台
+        正在初始化智慧空間平台
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
-# 📋 智能空間平台 - 標準作業程序 (SOP)
+# 📋 智慧空間平台 - 標準作業程序 (SOP)
 
 ## 📖 文檔概述
 **文檔名稱**: 標準作業程序 (Standard Operating Procedures)
-**適用專案**: 智能空間平台 (Intelligent Spatial Platform)
+**適用專案**: 智慧空間平台 (Intelligent Spatial Platform)
 **技術棧**: Go + CesiumJS + PostgreSQL + Ollama + WebSocket
 **文檔版本**: v1.0
 
@@ -75,7 +75,7 @@ mv docs/plans/completed/20250814_* docs/plans/archived/
 
 ---
 
-## 📋 SOP-003: 智能空間平台專案特殊程序
+## 📋 SOP-003: 智慧空間平台專案特殊程序
 
 ### 開發環境啟動
 ```bash
@@ -134,7 +134,7 @@ cd web && npm run lint
 - [ ] **可執行性**: 實作階段具體可操作
 - [ ] **索引更新**: PROJECT_INDEX.md 已同步更新
 
-### 智能空間平台特殊檢查
+### 智慧空間平台特殊檢查
 - [ ] **技術相容性**: 與現有 Go/CesiumJS 架構相容
 - [ ] **容器整合**: 確認 Podman 容器配置正確
 - [ ] **API 一致性**: 符合 RESTful 設計原則
