@@ -49,6 +49,27 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: true, // 強制使用指定端口，避免自動切換
+    proxy: {
+      // API 代理到後端容器
+      '/api': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 健康檢查端點代理
+      '/health': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        secure: false,
+      },
+      // WebSocket 代理
+      '/ws': {
+        target: 'ws://localhost:8081',
+        ws: true,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   build: {
     outDir: 'dist',

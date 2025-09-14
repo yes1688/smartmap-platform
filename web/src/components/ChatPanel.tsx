@@ -220,7 +220,7 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
 
         {/* Input hints */}
         <div class="mt-2 flex flex-wrap gap-2">
-          {['你好', '怎麼玩', '幫助'].map(hint => (
+          {['移動兔子到台北101', '移動到我的位置', '怎麼控制兔子', '兔子做什麼動作'].map(hint => (
             <button
               onClick={() => setInputValue(hint)}
               class="px-3 py-1.5 text-xs bg-gradient-to-r from-gray-100 to-gray-200 hover:from-emerald-100 hover:to-teal-100 text-gray-600 hover:text-emerald-700 rounded-full transition-all duration-200 border border-gray-200/50 hover:border-emerald-300/50 hover:shadow-sm"

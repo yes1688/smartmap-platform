@@ -64,7 +64,7 @@ services:
       - "${NGINX_PORT}:80"
     volumes:
       - ./containers/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./web-solid/dist:/usr/share/nginx/html:ro
+      - ./web/dist:/usr/share/nginx/html:ro
     depends_on:
       app:
         condition: service_healthy

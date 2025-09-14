@@ -7,6 +7,7 @@ import ChatPanel from '@/components/ChatPanel';
 import VoicePanel from '@/components/VoicePanel';
 import HistoricalSitePanel from '@/components/HistoricalSitePanel';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import { WelcomeModal } from '@/components/WelcomeModal';
 import { gameActions } from '@/stores/gameStore';
 import type { UIState, HistoricalSite } from '@/types';
 import '@/styles/animations.css';
@@ -24,7 +25,12 @@ const App: Component = () => {
 
   const [userId] = createSignal(generateUserId());
 
+  // 歡迎彈窗狀態
+  const [showWelcomeModal, setShowWelcomeModal] = createSignal(false);
+
   onMount(async () => {
+    // 每次頁面載入都顯示歡迎彈窗
+    setShowWelcomeModal(true);
     try {
       // Initialize the game system
       await gameActions.initializeGame(userId());
@@ -62,6 +68,10 @@ const App: Component = () => {
 
   const handlePlayerMove = (latitude: number, longitude: number) => {
     gameActions.updatePlayerPosition(latitude, longitude);
+  };
+
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false);
   };
 
   function generateUserId(): string {
@@ -169,6 +179,12 @@ const App: Component = () => {
           <LoadingOverlay message="載入智能空間平台..." />
         </div>
       </Show>
+
+      {/* Welcome Modal */}
+      <WelcomeModal
+        isOpen={showWelcomeModal()}
+        onClose={handleCloseWelcomeModal}
+      />
 
       {/* Status Bar (Mobile) */}
       <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-glass border-t border-neutral-200/50 p-4 z-30">

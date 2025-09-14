@@ -2,6 +2,8 @@ import { Component, onMount, onCleanup, createSignal, For } from 'solid-js';
 import * as Cesium from 'cesium';
 import { CONFIG } from '@/config';
 import type { HistoricalSite } from '@/types';
+import { createPlayerAvatarSystem, useGeolocation, type PlayerData } from './PlayerAvatarSystem';
+import { addThreeJsAvatarToCesium, type ThreeJsAvatarProps } from './ThreeJsAvatar';
 import '@/styles/scrollbar.css';
 
 interface CesiumMapProps {
@@ -12,6 +14,13 @@ interface CesiumMapProps {
 const CesiumMap: Component<CesiumMapProps> = (props) => {
   let mapContainer: HTMLDivElement;
   let viewer: Cesium.Viewer | undefined;
+
+  // 玩偶系統狀態
+  const [players, setPlayers] = createSignal<PlayerData[]>([]);
+  const [currentPlayerId, setCurrentPlayerId] = createSignal<string>('player-1');
+
+  // 地理位置工具
+  const geolocation = useGeolocation();
 
   // 即時位置監控 - 相機位置
   const [currentPosition, setCurrentPosition] = createSignal({
@@ -31,13 +40,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
     isTracking: false
   });
 
-  // 點擊狀態管理 - 兩階段縮放系統
-  const [clickState, setClickState] = createSignal({
-    lastClickPosition: { lat: 0, lng: 0 },
-    isFirstClick: true,
-    clickRadius: 0.05, // 判斷是否點擊同一位置的容差範圍（約5公里）
-    lastClickTime: 0
-  });
+  // 🗑️ 點擊狀態管理已移除 - 不再需要點擊地圖縮放功能
 
   const [cameraInfo, setCameraInfo] = createSignal({
     heading: 0,
@@ -144,38 +147,60 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
         // 通知父組件更新玩家位置
         props.onPlayerMove(latitude, longitude);
 
-        // 飛行到用戶位置並添加GPS標記
-        if (viewer) {
-          // 清除之前的GPS標記
-          viewer.entities.removeAll();
+        // 更新當前玩家的玩偶位置
+        const updatedPlayers = players().map(player =>
+          player.id === currentPlayerId()
+            ? { ...player, latitude, longitude, height: 0 }
+            : player
+        );
 
-          // 添加GPS位置標記
-          viewer.entities.add({
-            position: Cesium.Cartesian3.fromDegrees(longitude, latitude),
-            point: {
-              pixelSize: 20,
-              color: Cesium.Color.YELLOW,
-              outlineColor: Cesium.Color.RED,
-              outlineWidth: 3,
-              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-            },
-            label: {
-              text: '📍 我的位置',
-              font: '14pt sans-serif',
-              fillColor: Cesium.Color.WHITE,
-              outlineColor: Cesium.Color.BLACK,
-              outlineWidth: 2,
-              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-              pixelOffset: new Cesium.Cartesian2(0, -50),
-              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-            }
-          });
-
-          viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, 1000),
-            duration: 2.0
-          });
+        if (updatedPlayers.length === 0) {
+          // 如果還沒有玩家，創建當前玩家
+          const currentPlayer: PlayerData = {
+            id: currentPlayerId(),
+            name: '我',
+            latitude,
+            longitude,
+            height: 0,
+            color: '#FF6B6B',
+            isCurrentPlayer: true
+          };
+          setPlayers([currentPlayer]);
+        } else {
+          setPlayers(updatedPlayers);
         }
+
+        // 更新 Three.js 玩偶位置到GPS位置
+        const playerId = currentPlayerId();
+        const avatarInstances = (window as any).avatarInstances as Map<string, ReturnType<typeof addThreeJsAvatarToCesium>>;
+
+        if (avatarInstances && avatarInstances.has(playerId)) {
+          const avatarInstance = avatarInstances.get(playerId);
+          if (avatarInstance) {
+            // 更新玩偶到GPS位置
+            avatarInstance.updatePosition({
+              latitude,
+              longitude,
+              height: 0
+            });
+
+            // 開始走路動畫表示玩家移動
+            avatarInstance.startWalkingAnimation();
+
+            console.log('📍 玩偶已移動到GPS位置:', latitude, longitude);
+            addMessage('success', '玩偶同步', `玩偶已移動到您的位置 (${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°)`);
+          }
+        } else {
+          console.warn('⚠️ 找不到當前玩家的玩偶實例');
+        }
+
+        // 🚫 停用GPS定位後的相機飛行效果
+        // if (viewer) {
+        //   viewer.camera.flyTo({
+        //     destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, 1000),
+        //     duration: 2.0
+        //   });
+        // }
       },
       (error) => {
         let errorMessage = '獲取位置失敗';
@@ -232,29 +257,25 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
         console.log('🔄 位置更新:', latitude, longitude);
         props.onPlayerMove(latitude, longitude);
 
-        // 更新GPS位置標記
-        if (viewer) {
-          viewer.entities.removeAll();
-          viewer.entities.add({
-            position: Cesium.Cartesian3.fromDegrees(longitude, latitude),
-            point: {
-              pixelSize: 20,
-              color: Cesium.Color.LIME,
-              outlineColor: Cesium.Color.DARKGREEN,
-              outlineWidth: 3,
-              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-            },
-            label: {
-              text: '📍 即時位置',
-              font: '14pt sans-serif',
-              fillColor: Cesium.Color.WHITE,
-              outlineColor: Cesium.Color.BLACK,
-              outlineWidth: 2,
-              style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-              pixelOffset: new Cesium.Cartesian2(0, -50),
-              heightReference: Cesium.HeightReference.CLAMP_TO_GROUND
-            }
-          });
+        // 更新 Three.js 玩偶位置 (持續監控GPS)
+        const playerId = currentPlayerId();
+        const avatarInstances = (window as any).avatarInstances as Map<string, ReturnType<typeof addThreeJsAvatarToCesium>>;
+
+        if (avatarInstances && avatarInstances.has(playerId)) {
+          const avatarInstance = avatarInstances.get(playerId);
+          if (avatarInstance) {
+            // 實時更新玩偶位置跟隨GPS
+            avatarInstance.updatePosition({
+              latitude,
+              longitude,
+              height: 0
+            });
+
+            // 持續播放走路動畫
+            avatarInstance.startWalkingAnimation();
+
+            console.log('🔄 玩偶實時跟隨GPS位置:', latitude, longitude);
+          }
         }
       },
       (error) => {
@@ -298,6 +319,12 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
       });
       console.log('✅ CesiumJS Viewer Created:', viewer);
 
+      // 🚫 停用Cesium默認的點擊飛行效果，但保留滑鼠移動功能
+      viewer.cesiumWidget.creditContainer.style.display = "none"; // 隱藏版權信息
+      viewer.scene.globe.enableLighting = true; // 啟用光照效果
+
+      console.log('🎮 滑鼠移動保持啟用，點擊ZOOM飛行效果已停用');
+
       // 啟用立體建築物和地形 + Google地圖底圖
       const load3DFeatures = async () => {
         try {
@@ -316,7 +343,8 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
           googleLayer.contrast = 1.1;
           googleLayer.saturation = 1.2;
 
-          // 2. 載入Minecraft風格建築 🎮
+          // 2. 載入Minecraft風格建築 🎮 - 已停用以避免遮擋兔子玩偶
+          /*
           const buildingsProvider = await Cesium.createOsmBuildingsAsync();
 
           // 應用 Minecraft 風格建築顏色 - 暫時使用單一隨機色
@@ -336,6 +364,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
 
           console.log('✅ Minecraft風格建築載入成功');
           addMessage('success', '地圖樣式', '🎮 已載入Minecraft風格建築');
+          */
 
           // 添加環境光照效果，讓方塊更立體
           viewer.scene.globe.enableLighting = true;
@@ -344,7 +373,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
           // 3. 啟用地形
           viewer.terrainProvider = await Cesium.createWorldTerrainAsync();
 
-          addMessage('success', '地圖樣式', '🧱 已載入Google街道地圖 + Minecraft風格建築');
+          addMessage('success', '地圖樣式', '🗺️ 已載入Google街道地圖 - 清爽無建築物遮擋');
           console.log('✅ Google地圖載入成功');
         } catch (error) {
           console.error('❌ 立體建築載入失敗:', error);
@@ -355,12 +384,12 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
 
       load3DFeatures();
 
-      // 飛行到台北101 - 設定斜角視角
+      // 設定上空俯視角度 - 完美觀看兔子玩偶視角 (ZOOM IN 兩級)
       viewer.camera.setView({
-        destination: Cesium.Cartesian3.fromDegrees(121.5645, 25.0340, 1000), // 1000米高度
+        destination: Cesium.Cartesian3.fromDegrees(121.5645, 25.0340, 2000), // 2000米高度俯視 (更近距離觀看兔子)
         orientation: {
-          heading: Cesium.Math.toRadians(45),  // 朝東北方向 (45度)
-          pitch: Cesium.Math.toRadians(-25),   // 向下傾斜25度
+          heading: Cesium.Math.toRadians(0),   // 正北方向 (0度)
+          pitch: Cesium.Math.toRadians(-89),   // 接近垂直向下俯視 (89度向下)
           roll: 0.0
         }
       });
@@ -369,6 +398,132 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
 
       // Global access for debugging
       (window as any).cesiumViewer = viewer;
+
+
+      // 添加一些示例玩家
+      const demoPlayers: PlayerData[] = [
+        {
+          id: 'player-1',
+          name: '我',
+          latitude: 25.0340,
+          longitude: 121.5645,
+          height: 0,
+          color: '#FF6B6B',
+          isCurrentPlayer: true
+        },
+        {
+          id: 'player-2',
+          name: '小明',
+          latitude: 25.0350,
+          longitude: 121.5655,
+          height: 0,
+          color: '#4ECDC4',
+          isCurrentPlayer: false
+        },
+        {
+          id: 'player-3',
+          name: '小美',
+          latitude: 25.0320,
+          longitude: 121.5635,
+          height: 0,
+          color: '#45B7D1',
+          isCurrentPlayer: false
+        }
+      ];
+
+      setPlayers(demoPlayers);
+
+      // 使用 Three.js 創建詳細的玩偶實體
+      const avatarInstances = new Map<string, ReturnType<typeof addThreeJsAvatarToCesium>>();
+
+      demoPlayers.forEach((player, index) => {
+        const isCurrentPlayer = player.id === currentPlayerId();
+
+        // 創建 Three.js 玩偶
+        const avatarProps: ThreeJsAvatarProps = {
+          playerId: player.id,
+          position: {
+            latitude: player.latitude,
+            longitude: player.longitude,
+            height: player.height || 0
+          },
+          viewer: viewer,
+          name: player.name,
+          color: player.color || '#4ECDC4',
+          isCurrentPlayer
+        };
+
+        try {
+          const avatarInstance = addThreeJsAvatarToCesium(viewer, avatarProps);
+          if (avatarInstance) {
+            avatarInstances.set(player.id, avatarInstance);
+            console.log(`✅ 成功創建 Three.js 玩偶: ${player.name}`);
+          } else {
+            console.error(`❌ 無法創建 Three.js 玩偶: ${player.name} - Three.js 載入失敗`);
+            addMessage('error', 'Three.js 錯誤', `無法創建玩偶 ${player.name} - Three.js 載入失敗`);
+          }
+        } catch (error) {
+          console.error(`❌ 創建 Three.js 玩偶時發生錯誤: ${player.name}`, error);
+          addMessage('error', 'Three.js 錯誤', `創建玩偶 ${player.name} 時發生錯誤`);
+        }
+
+        console.log(`🎮 Created Three.js avatar: ${player.name} at ${player.latitude.toFixed(4)}, ${player.longitude.toFixed(4)}`);
+      });
+
+      // 存儲 avatar 實例以便後續更新
+      (window as any).avatarInstances = avatarInstances;
+
+      // 🎮 增強版點擊事件處理 - 支援選中其他玩家的兔子玩偶
+      viewer.cesiumWidget.screenSpaceEventHandler.setInputAction((event: any) => {
+        console.log('🖱️ 點擊事件觸發！位置:', event.position);
+
+        const pickedObject = viewer.scene.pick(event.position);
+        console.log('🎯 點擊檢測結果:', pickedObject);
+
+        if (Cesium.defined(pickedObject)) {
+          console.log('✅ 有檢測到物體');
+
+          if (Cesium.defined(pickedObject.id)) {
+            const entity = pickedObject.id;
+            console.log('🔍 檢查實體:', entity);
+            console.log('📋 實體屬性:', entity.properties);
+
+            if (entity.properties && entity.properties.playerId) {
+              const playerId = entity.properties.playerId.getValue();
+              const playerName = entity.properties.playerName?.getValue() || 'Unknown Player';
+              const isCurrentPlayer = entity.properties.isCurrentPlayer?.getValue() || false;
+
+              console.log(`🎮 成功點擊兔子玩偶: ${playerName} (${playerId}) ${isCurrentPlayer ? '[當前玩家]' : '[其他玩家]'}`);
+              addMessage('success', '玩家選中', `🐰 選中玩家: ${playerName} ${isCurrentPlayer ? '(你的兔子)' : '(其他兔子)'}`);
+
+              // 開始走路動畫
+              const avatarInstances = (window as any).avatarInstances as Map<string, ReturnType<typeof addThreeJsAvatarToCesium>>;
+              if (avatarInstances && avatarInstances.has(playerId)) {
+                const avatarInstance = avatarInstances.get(playerId);
+                if (avatarInstance) {
+                  avatarInstance.startWalkingAnimation();
+                  console.log(`🚶 開始 ${playerName} 的可愛跳躍動畫`);
+                  addMessage('info', '動畫播放', `🐰 ${playerName} 開始跳躍表演！`);
+                } else {
+                  console.warn('⚠️ 找不到玩偶實例');
+                }
+              } else {
+                console.warn('⚠️ avatarInstances 不存在或沒有這個玩家ID:', playerId);
+                console.log('🔍 當前可用的玩偶:', avatarInstances ? Array.from(avatarInstances.keys()) : '無');
+              }
+            } else {
+              console.log('ℹ️ 點擊的不是兔子玩偶（沒有playerId屬性）');
+            }
+          } else {
+            console.log('ℹ️ 檢測到物體但沒有實體ID');
+          }
+        } else {
+          console.log('ℹ️ 點擊空白地區');
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      addMessage('success', '玩偶系統', `已創建 ${demoPlayers.length} 個可愛兔子玩偶！`);
+      addMessage('info', '💡 使用提示', '請對AI說：「移動兔子到XX位置」來控制兔子玩偶移動');
 
       // 即時監控相機位置變化
       viewer.camera.changed.addEventListener(() => {
@@ -394,149 +549,7 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
         });
       });
 
-      // 點擊地圖處理
-      viewer.cesiumWidget.screenSpaceEventHandler.setInputAction((click) => {
-        const pickedPosition = viewer!.camera.pickEllipsoid(click.position, viewer!.scene.globe.ellipsoid);
-        if (pickedPosition) {
-          const cartographic = Cesium.Cartographic.fromCartesian(pickedPosition);
-          const longitude = Cesium.Math.toDegrees(cartographic.longitude);
-          const latitude = Cesium.Math.toDegrees(cartographic.latitude);
-
-          console.log(`🎯 點擊位置: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-
-          const currentTime = Date.now();
-          const currentState = clickState();
-
-          // 計算是否點擊在同一位置附近
-          const latDiff = Math.abs(latitude - currentState.lastClickPosition.lat);
-          const lngDiff = Math.abs(longitude - currentState.lastClickPosition.lng);
-          const isSameLocation = latDiff < currentState.clickRadius && lngDiff < currentState.clickRadius;
-
-          // 檢查是否是快速連續點擊（10秒內）
-          const isQuickClick = (currentTime - currentState.lastClickTime) < 10000;
-
-          // 調試日誌
-          console.log(`🔍 調試信息:`);
-          console.log(`  lastPosition:`, currentState.lastClickPosition);
-          console.log(`  currentPosition:`, { lat: latitude, lng: longitude });
-          console.log(`  latDiff: ${latDiff.toFixed(6)}, lngDiff: ${lngDiff.toFixed(6)}`);
-          console.log(`  clickRadius: ${currentState.clickRadius}`);
-          console.log(`  isSameLocation: ${isSameLocation}`);
-          console.log(`  isQuickClick: ${isQuickClick} (timeDiff: ${currentTime - currentState.lastClickTime}ms)`);
-          console.log(`  isFirstClick: ${currentState.isFirstClick}`);
-
-          let newHeight: number;
-          let newPitch: number;
-          let message: string;
-
-          if (currentState.isFirstClick || !isSameLocation || !isQuickClick) {
-            // 第一階段：Zoom out 到表面上空獲得全景視野
-            newHeight = 5000; // 5公里高度，俯瞰視角
-            newPitch = Cesium.Math.toRadians(-60); // 60度俯角
-            message = `🌍 第一階段 - 表面全景視野: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-
-            // 更新狀態為第二階段準備
-            setClickState({
-              lastClickPosition: { lat: latitude, lng: longitude },
-              isFirstClick: false,
-              clickRadius: currentState.clickRadius,
-              lastClickTime: currentTime
-            });
-
-            // 飛行到點擊位置的俯瞰視角
-            viewer!.camera.flyTo({
-              destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
-              duration: 1.5,
-              orientation: {
-                heading: Cesium.Math.toRadians(0), // 朝北
-                pitch: newPitch,
-                roll: 0.0
-              }
-            });
-
-          } else {
-            // 第二階段：智能 Zoom in 進入近距離角度視角檢視
-            // 先獲取地形高度，避免在山區時鑽入地表
-            const cartographic = Cesium.Cartographic.fromDegrees(longitude, latitude);
-
-            // 異步獲取地形高度
-            const promise = Cesium.sampleTerrainMostDetailed(viewer!.terrainProvider, [cartographic]);
-            promise.then((updatedPositions) => {
-              const terrainHeight = updatedPositions[0].height || 0; // 地表高度（米）
-
-              // 智能計算安全高度：地表高度 + 至少200米緩衝
-              const safeHeight = Math.max(terrainHeight + 200, 200);
-
-              // 如果是高山地區，增加更多緩衝
-              if (terrainHeight > 1000) {
-                newHeight = terrainHeight + 500; // 高山區域：地表 + 500米
-                message = `🏔️ 第二階段 - 山區視角檢視 (地表+${(newHeight - terrainHeight).toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-              } else if (terrainHeight > 100) {
-                newHeight = terrainHeight + 300; // 丘陵地區：地表 + 300米
-                message = `🌄 第二階段 - 丘陵視角檢視 (地表+${(newHeight - terrainHeight).toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-              } else {
-                newHeight = Math.max(terrainHeight + 200, 200); // 平地：地表 + 200米，最低200米
-                message = `🔍 第二階段 - 角度視角檢視 (${newHeight.toFixed(0)}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-              }
-
-              newPitch = Cesium.Math.toRadians(-30); // 30度俯角
-
-              // 重置狀態，為下次點擊做準備
-              setClickState({
-                lastClickPosition: { lat: 0, lng: 0 },
-                isFirstClick: true,
-                clickRadius: currentState.clickRadius,
-                lastClickTime: currentTime
-              });
-
-              // 飛行到安全的近距離角度視角
-              viewer!.camera.flyTo({
-                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
-                duration: 1.2,
-                orientation: {
-                  heading: Cesium.Math.toRadians(45), // 東北方向
-                  pitch: newPitch,
-                  roll: 0.0
-                }
-              });
-
-              // 更新消息
-              addMessage('info', '地圖導航', message);
-            }).catch(() => {
-              // 如果地形數據獲取失敗，使用安全的默認高度
-              newHeight = 500; // 預設500米，比較安全
-              message = `🔍 第二階段 - 安全視角檢視 (${newHeight}m): ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
-
-              setClickState({
-                lastClickPosition: { lat: 0, lng: 0 },
-                isFirstClick: true,
-                clickRadius: currentState.clickRadius,
-                lastClickTime: currentTime
-              });
-
-              viewer!.camera.flyTo({
-                destination: Cesium.Cartesian3.fromDegrees(longitude, latitude, newHeight),
-                duration: 1.2,
-                orientation: {
-                  heading: Cesium.Math.toRadians(45),
-                  pitch: Cesium.Math.toRadians(-30),
-                  roll: 0.0
-                }
-              });
-
-              addMessage('info', '地圖導航', message);
-            });
-
-            // 提前顯示處理中的消息
-            message = `🔄 正在計算安全高度...`;
-          }
-
-          // 添加點擊消息
-          addMessage('info', '地圖導航', message);
-
-          props.onPlayerMove(latitude, longitude);
-        }
-      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+      // 🗑️ 點擊地圖處理已完全移除 - 避免干擾觀看兔子玩偶
 
       console.log('🌍 CesiumJS initialization completed successfully!');
 
@@ -699,6 +712,38 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
             </div>
           </div>
 
+          {/* 玩家列表 */}
+          <div class="space-y-1 border-t border-white/20 pt-2">
+            <div class="text-xs text-purple-400 font-medium flex items-center justify-between">
+              <span>在線玩家 ({players().length})</span>
+              <div class="w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse"></div>
+            </div>
+            <div class="bg-white/5 rounded space-y-1 p-2 max-h-20 overflow-y-auto scrollbar-dark">
+              <For each={players()}>
+                {(player) => (
+                  <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center space-x-2">
+                      <div
+                        class="w-2 h-2 rounded-full"
+                        style={{
+                          'background-color': player.color || '#4ECDC4',
+                          animation: player.isCurrentPlayer ? 'pulse 2s infinite' : 'none'
+                        }}
+                      ></div>
+                      <span class={`${player.isCurrentPlayer ? 'text-red-300 font-medium' : 'text-gray-300'}`}>
+                        {player.name}
+                        {player.isCurrentPlayer && ' (我)'}
+                      </span>
+                    </div>
+                    <div class="text-xs text-gray-400">
+                      {player.latitude.toFixed(3)}°, {player.longitude.toFixed(3)}°
+                    </div>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+
           {/* 系統訊息 */}
           <div class="space-y-1 border-t border-white/20 pt-2">
             <div class="text-xs text-cyan-400 font-medium flex items-center justify-between">
@@ -740,8 +785,10 @@ const CesiumMap: Component<CesiumMapProps> = (props) => {
           </div>
 
           {/* 操作提示 */}
-          <div class="text-xs text-blue-200 bg-blue-500/20 p-2 rounded">
-            💡 點擊地圖任意處快速飛行到該位置
+          <div class="text-xs text-blue-200 bg-blue-500/20 p-2 rounded space-y-1">
+            <div>💡 點擊地圖任意處快速飛行到該位置</div>
+            <div>🐰 點擊兔子玩偶可查看詳細資訊</div>
+            <div>🤖 <strong>請對AI說：「移動兔子到XX位置」</strong></div>
           </div>
         </div>
       </div>

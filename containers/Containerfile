@@ -7,13 +7,13 @@ FROM docker.io/node:20-alpine AS frontend-builder
 WORKDIR /frontend
 
 # Copy frontend package files
-COPY web-solid/package.json ./
+COPY web/package.json ./
 
 # Install dependencies
 RUN npm install
 
 # Copy frontend source
-COPY web-solid/ ./
+COPY web/ ./
 
 # Build frontend
 RUN npm run build
