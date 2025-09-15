@@ -1,11 +1,16 @@
-import { Component, createSignal, For, Show } from 'solid-js';
+import { Component, createSignal, For, Show, createEffect, onMount } from 'solid-js';
 import type { ChatMessage } from '@/types';
+import { CONFIG } from '@/config';
+import { gameStore } from '@/stores/gameStore';
 
 interface ChatPanelProps {
   onClose: () => void;
+  onMovementResponse?: (result: any) => void;
 }
 
 const ChatPanel: Component<ChatPanelProps> = (props) => {
+  let messagesContainer: HTMLDivElement | undefined;
+
   const [messages, setMessages] = createSignal<ChatMessage[]>([
     {
       id: '1',
@@ -17,6 +22,27 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
 
   const [inputValue, setInputValue] = createSignal('');
   const [isProcessing, setIsProcessing] = createSignal(false);
+
+  // Auto-scroll to bottom when new messages are added
+  const scrollToBottom = () => {
+    if (messagesContainer) {
+      messagesContainer.scrollTo({
+        top: messagesContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Watch for messages changes and auto-scroll
+  createEffect(() => {
+    messages(); // Subscribe to messages changes
+    setTimeout(scrollToBottom, 100); // Small delay to ensure DOM update
+  });
+
+  // Initial scroll on mount
+  onMount(() => {
+    setTimeout(scrollToBottom, 100);
+  });
 
   const handleSendMessage = async () => {
     const message = inputValue().trim();
@@ -35,20 +61,79 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
     setIsProcessing(true);
 
     try {
-      // Simulate AI response (replace with actual API call)
-      setTimeout(() => {
-        const aiResponse: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          message: getQuickResponse(message) || '我正在思考您的問題...',
-          timestamp: Date.now(),
-        };
+      // Use the regular chat endpoint with movement integration
+      const response = await fetch(`${CONFIG.api.baseUrl}${CONFIG.api.endpoints.aiChat}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerId: gameStore.player?.id || 'default_player',
+          message: message,
+          context: '智慧空間平台遊戲助手'
+        }),
+      });
 
-        setMessages(prev => [...prev, aiResponse]);
-        setIsProcessing(false);
-      }, 1000);
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      let responseMessage = '';
+      let isMovementCommand = false;
+
+      if (data.type === 'movement' && data.data) {
+        // Handle movement response
+        isMovementCommand = true;
+        const movementData = data.data;
+
+        if (movementData.success) {
+          responseMessage = `🐰 ${movementData.message}`;
+
+          // Update player position if successful
+          if (movementData.newPosition) {
+            gameStore.updatePlayerPosition(
+              movementData.newPosition.latitude,
+              movementData.newPosition.longitude
+            );
+          }
+
+          // Notify parent component about movement
+          if (props.onMovementResponse) {
+            props.onMovementResponse(movementData);
+          }
+        } else {
+          responseMessage = `❌ ${movementData.message}`;
+          if (movementData.rateLimited) {
+            responseMessage += '\n請稍後再試。';
+          }
+        }
+      } else {
+        // Handle regular chat response
+        responseMessage = data.response || data.data?.message || '抱歉，我無法回應您的問題。';
+      }
+
+      const aiResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        message: responseMessage,
+        timestamp: Date.now(),
+      };
+
+      setMessages(prev => [...prev, aiResponse]);
+      setIsProcessing(false);
     } catch (error) {
       console.error('Failed to send message:', error);
+      // Fallback to quick response if API fails
+      const aiResponse: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        message: getQuickResponse(message) || '抱歉，我現在無法連接到AI服務。請稍後再試。',
+        timestamp: Date.now(),
+      };
+
+      setMessages(prev => [...prev, aiResponse]);
       setIsProcessing(false);
     }
   };
@@ -122,7 +207,7 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
       </div>
 
       {/* Messages Area */}
-      <div class="relative flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+      <div ref={messagesContainer} class="relative flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
         <For each={messages()}>
           {(message) => (
             <div class={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>

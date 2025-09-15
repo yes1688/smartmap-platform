@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"intelligent-spatial-platform/internal/geo"
@@ -36,13 +37,23 @@ func NewService(ollamaURL string) *Service {
 }
 
 func (s *Service) Chat(message, context string) (string, error) {
+	// 為一般聊天添加台灣用語指示
+	baseContext := "你是智慧空間平台的AI助理，請用台灣常見的用語和較親切的語調回答。回答請簡潔有用，不要太冗長。"
+
 	prompt := message
 	if context != "" {
-		prompt = fmt.Sprintf("Context: %s\n\nUser: %s", context, message)
+		prompt = fmt.Sprintf("%s\n\nContext: %s\n\nUser: %s", baseContext, context, message)
+	} else {
+		prompt = fmt.Sprintf("%s\n\nUser: %s", baseContext, message)
+	}
+
+	model := os.Getenv("OLLAMA_MODEL")
+	if model == "" {
+		model = "phi4-mini-max:latest"
 	}
 
 	request := OllamaRequest{
-		Model:  "llama2:7b",
+		Model:  model,
 		Prompt: prompt,
 		Stream: false,
 	}
@@ -93,7 +104,7 @@ func (s *Service) ProcessVoiceCommand(command string, playerLocation *geo.Locati
 請用繁體中文回應，保持友善和有幫助的語調。`,
 		command, playerLocation.Latitude, playerLocation.Longitude)
 
-	return s.Chat(prompt, "你是一位智慧空間平台的AI助手，專門協助用戶進行地圖導航、歷史景點探索和互動遊戲。")
+	return s.Chat(prompt, "你是智慧空間平台的AI助理，專門幫助使用者進行地圖導覽、歷史景點探索和互動遊戲。請用台灣用語回答，語調親切友善。")
 }
 
 func (s *Service) GenerateGameResponse(action, result string) (string, error) {
@@ -102,5 +113,37 @@ func (s *Service) GenerateGameResponse(action, result string) (string, error) {
 
 請為這個遊戲動作生成一個有趣的中文回應（約30-50字），增加遊戲的趣味性。`, action, result)
 
-	return s.Chat(prompt, "你是一位遊戲主持人，負責為空間探索遊戲提供有趣的互動回應。")
+	return s.Chat(prompt, "你是遊戲主持人，負責為空間探索遊戲提供有趣的互動回應。請用台灣用語，語調要活潑有趣。")
+}
+
+func (s *Service) ProcessMovementCommand(command, playerID string, currentLocation *geo.Location) (string, error) {
+	// Create movement parser
+	parser := NewMovementCommandParser(s)
+
+	// Parse the movement command
+	moveCmd, err := parser.ParseMovementCommand(command, currentLocation)
+	if err != nil {
+		// If not a movement command, return regular chat response
+		return s.ProcessVoiceCommand(command, currentLocation)
+	}
+
+	// Generate AI response for movement
+	prompt := fmt.Sprintf(`玩家發出移動指令："%s"
+解析結果：
+- 類型：%s
+- 動作：%s
+- 目標位置：緯度 %.6f，經度 %.6f
+- 預估時間：%d 秒
+- 信心度：%.1f%%
+
+請生成一個友善的回應，告知玩家移動指令已理解並將執行。用台灣用語，語調親切。`,
+		moveCmd.OriginalText,
+		moveCmd.Type,
+		moveCmd.Action,
+		moveCmd.Destination.Latitude,
+		moveCmd.Destination.Longitude,
+		moveCmd.EstimatedTime,
+		moveCmd.Confidence*100)
+
+	return s.Chat(prompt, "你是智慧空間平台的AI助理，專門幫助使用者控制虛擬兔子移動。請用台灣用語，語調親切友善。")
 }

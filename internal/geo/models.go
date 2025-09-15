@@ -65,3 +65,10 @@ type Geometry struct {
 	Type        string      `json:"type"`
 	Coordinates interface{} `json:"coordinates"`
 }
+
+type Bounds struct {
+	North float64 `json:"north"`
+	South float64 `json:"south"`
+	East  float64 `json:"east"`
+	West  float64 `json:"west"`
+}

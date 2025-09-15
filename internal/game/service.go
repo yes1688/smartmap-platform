@@ -7,10 +7,15 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"intelligent-spatial-platform/internal/ai"
+	"intelligent-spatial-platform/internal/geo"
 )
 
 type Service struct {
-	db *gorm.DB
+	db        *gorm.DB
+	aiService *ai.Service
+	movementParser *ai.MovementCommandParser
+	rateLimiter    map[string]*RateLimit
 }
 
 type CollectResult struct {
@@ -21,8 +26,35 @@ type CollectResult struct {
 	Item        *Item  `json:"item,omitempty"`
 }
 
-func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+type RateLimit struct {
+	Count     int       `json:"count"`
+	LastReset time.Time `json:"lastReset"`
+	WindowDuration time.Duration `json:"windowDuration"`
+	MaxRequests    int           `json:"maxRequests"`
+}
+
+type AIMovementResult struct {
+	Success          bool                   `json:"success"`
+	Message          string                 `json:"message"`
+	MovementCommand  *ai.MovementCommand    `json:"movementCommand,omitempty"`
+	NewPosition      *geo.Location          `json:"newPosition,omitempty"`
+	EstimatedTime    int                    `json:"estimatedTime"`
+	ErrorCode        string                 `json:"errorCode,omitempty"`
+	RateLimited      bool                   `json:"rateLimited,omitempty"`
+	Audit            *ai.MovementAudit      `json:"audit,omitempty"`
+}
+
+func NewService(db *gorm.DB, aiService *ai.Service) *Service {
+	service := &Service{
+		db:          db,
+		aiService:   aiService,
+		rateLimiter: make(map[string]*RateLimit),
+	}
+
+	// Initialize movement parser
+	service.movementParser = ai.NewMovementCommandParser(aiService)
+
+	return service
 }
 
 func (s *Service) CreatePlayer(id, name string, lat, lng float64) (*Player, error) {
@@ -242,4 +274,168 @@ func calculateDistance(lat1, lng1, lat2, lng2 float64) float64 {
 
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+// AI-controlled secure movement system
+func (s *Service) ProcessAIMovementCommand(playerID, command, sessionID, ipAddress string) (*AIMovementResult, error) {
+	// Check rate limiting first
+	if s.isRateLimited(playerID) {
+		return &AIMovementResult{
+			Success:     false,
+			Message:     "移動指令頻率過高，請稍後再試",
+			ErrorCode:   "RATE_LIMITED",
+			RateLimited: true,
+		}, nil
+	}
+
+	// Get current player position
+	player, err := s.GetPlayerStatus(playerID)
+	if err != nil {
+		return &AIMovementResult{
+			Success:   false,
+			Message:   "無法取得玩家狀態",
+			ErrorCode: "PLAYER_NOT_FOUND",
+		}, err
+	}
+
+	currentLocation := &geo.Location{
+		Latitude:  player.Latitude,
+		Longitude: player.Longitude,
+	}
+
+	// Parse movement command using AI
+	moveCmd, err := s.movementParser.ParseMovementCommand(command, currentLocation)
+	if err != nil {
+		// Log the failed attempt
+		audit := s.movementParser.LogMovementCommand(playerID, sessionID, ipAddress, nil, false, err.Error())
+
+		return &AIMovementResult{
+			Success:   false,
+			Message:   "無法解析移動指令：" + err.Error(),
+			ErrorCode: "PARSE_ERROR",
+			Audit:     audit,
+		}, nil
+	}
+
+	// Additional security validation
+	if err := s.validateMovementSecurity(moveCmd, currentLocation); err != nil {
+		audit := s.movementParser.LogMovementCommand(playerID, sessionID, ipAddress, moveCmd, false, err.Error())
+
+		return &AIMovementResult{
+			Success:         false,
+			Message:         "移動指令安全驗證失敗：" + err.Error(),
+			ErrorCode:       "SECURITY_VIOLATION",
+			MovementCommand: moveCmd,
+			Audit:           audit,
+		}, nil
+	}
+
+	// Execute the movement
+	err = s.MovePlayer(playerID, moveCmd.Destination.Latitude, moveCmd.Destination.Longitude)
+	if err != nil {
+		audit := s.movementParser.LogMovementCommand(playerID, sessionID, ipAddress, moveCmd, false, err.Error())
+
+		return &AIMovementResult{
+			Success:         false,
+			Message:         "移動執行失敗：" + err.Error(),
+			ErrorCode:       "EXECUTION_ERROR",
+			MovementCommand: moveCmd,
+			Audit:           audit,
+		}, nil
+	}
+
+	// Update rate limiter
+	s.updateRateLimit(playerID)
+
+	// Log successful movement
+	audit := s.movementParser.LogMovementCommand(playerID, sessionID, ipAddress, moveCmd, true, "")
+
+	// Generate AI response
+	aiResponse, _ := s.aiService.ProcessMovementCommand(command, playerID, currentLocation)
+
+	return &AIMovementResult{
+		Success:         true,
+		Message:         aiResponse,
+		MovementCommand: moveCmd,
+		NewPosition:     moveCmd.Destination,
+		EstimatedTime:   moveCmd.EstimatedTime,
+		Audit:           audit,
+	}, nil
+}
+
+func (s *Service) isRateLimited(playerID string) bool {
+	limit, exists := s.rateLimiter[playerID]
+	if !exists {
+		s.rateLimiter[playerID] = &RateLimit{
+			Count:          0,
+			LastReset:      time.Now(),
+			WindowDuration: 1 * time.Minute, // 1-minute window
+			MaxRequests:    10,               // max 10 movement commands per minute
+		}
+		return false
+	}
+
+	// Reset if window expired
+	if time.Since(limit.LastReset) > limit.WindowDuration {
+		limit.Count = 0
+		limit.LastReset = time.Now()
+	}
+
+	return limit.Count >= limit.MaxRequests
+}
+
+func (s *Service) updateRateLimit(playerID string) {
+	if limit, exists := s.rateLimiter[playerID]; exists {
+		limit.Count++
+	}
+}
+
+func (s *Service) validateMovementSecurity(moveCmd *ai.MovementCommand, currentLocation *geo.Location) error {
+	// Check if basic safety checks already passed
+	if !moveCmd.SafetyChecked {
+		return fmt.Errorf("movement command failed basic safety checks")
+	}
+
+	// Additional business logic validations
+	distance := calculateDistance(currentLocation.Latitude, currentLocation.Longitude,
+		moveCmd.Destination.Latitude, moveCmd.Destination.Longitude)
+
+	// Prevent teleportation-like movements
+	if distance > 10000 { // 10km max single movement
+		return fmt.Errorf("movement distance too large: %.2f meters (max: 10000 meters)", distance)
+	}
+
+	// Check confidence level
+	if moveCmd.Confidence < 0.3 {
+		return fmt.Errorf("movement command confidence too low: %.1f%% (min: 30%%)", moveCmd.Confidence*100)
+	}
+
+	// Validate against historical site boundaries (prevent moving into restricted areas)
+	if s.isInRestrictedArea(moveCmd.Destination) {
+		return fmt.Errorf("destination is in a restricted area")
+	}
+
+	return nil
+}
+
+func (s *Service) isInRestrictedArea(location *geo.Location) bool {
+	// This could check against a database of restricted areas
+	// For now, just return false (no restrictions)
+	return false
+}
+
+// Get movement statistics for monitoring
+func (s *Service) GetMovementStats(playerID string) map[string]interface{} {
+	stats := map[string]interface{}{
+		"playerID": playerID,
+	}
+
+	if limit, exists := s.rateLimiter[playerID]; exists {
+		stats["rateLimitCount"] = limit.Count
+		stats["rateLimitWindow"] = limit.WindowDuration.String()
+		stats["rateLimitMax"] = limit.MaxRequests
+		stats["lastActivity"] = limit.LastReset
+	}
+
+	return stats
 }

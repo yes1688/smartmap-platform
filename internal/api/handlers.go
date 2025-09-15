@@ -1,7 +1,9 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -87,8 +89,9 @@ func (h *Handler) ProcessVoice(c *gin.Context) {
 
 func (h *Handler) ChatWithAI(c *gin.Context) {
 	var request struct {
-		Message string `json:"message"`
-		Context string `json:"context,omitempty"`
+		Message  string `json:"message"`
+		Context  string `json:"context,omitempty"`
+		PlayerID string `json:"playerId,omitempty"`
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -96,6 +99,45 @@ func (h *Handler) ChatWithAI(c *gin.Context) {
 		return
 	}
 
+	// First, check if this might be a movement command
+	if request.PlayerID != "" {
+		// Get client info for movement command processing
+		sessionID := c.GetHeader("X-Session-ID")
+		if sessionID == "" {
+			sessionID = "web_session_" + request.PlayerID
+		}
+		clientIP := c.ClientIP()
+
+		// Try to process as movement command
+		movementResult, err := h.game.ProcessAIMovementCommand(
+			request.PlayerID,
+			request.Message,
+			sessionID,
+			clientIP,
+		)
+
+		// If movement command was successfully processed
+		if err == nil && movementResult.Success {
+			c.JSON(http.StatusOK, gin.H{
+				"type":     "movement",
+				"data":     movementResult,
+				"response": movementResult.Message,
+			})
+			return
+		}
+
+		// If rate limited, return error
+		if err == nil && movementResult.RateLimited {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"type":     "movement",
+				"data":     movementResult,
+				"response": movementResult.Message,
+			})
+			return
+		}
+	}
+
+	// Fall back to regular AI chat
 	response, err := h.ai.Chat(request.Message, request.Context)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -163,6 +205,25 @@ func (h *Handler) CollectItem(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": result})
 }
 
+func (h *Handler) CreateSession(c *gin.Context) {
+	var request struct {
+		PlayerID string `json:"playerId"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	session, err := h.game.StartGameSession(request.PlayerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": session})
+}
+
 func (h *Handler) MovePlayer(c *gin.Context) {
 	var request struct {
 		PlayerID string  `json:"playerId"`
@@ -192,4 +253,130 @@ func (h *Handler) MovePlayer(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+// AI Movement Control Handler
+func (h *Handler) AIMovement(c *gin.Context) {
+	var request struct {
+		PlayerID  string `json:"playerId" binding:"required"`
+		Command   string `json:"command" binding:"required"`
+		SessionID string `json:"sessionId,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get client IP for audit logging
+	clientIP := c.ClientIP()
+	if request.SessionID == "" {
+		request.SessionID = h.generateSessionID()
+	}
+
+	// Process AI movement command with security controls
+	result, err := h.game.ProcessAIMovementCommand(
+		request.PlayerID,
+		request.Command,
+		request.SessionID,
+		clientIP,
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Return different HTTP status based on result
+	var status int
+	if result.Success {
+		status = http.StatusOK
+	} else if result.RateLimited {
+		status = http.StatusTooManyRequests
+	} else {
+		status = http.StatusBadRequest
+	}
+
+	c.JSON(status, gin.H{"data": result})
+}
+
+// Get Movement Statistics
+func (h *Handler) GetMovementStats(c *gin.Context) {
+	playerID := c.Query("playerId")
+	if playerID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "playerId is required"})
+		return
+	}
+
+	stats := h.game.GetMovementStats(playerID)
+	c.JSON(http.StatusOK, gin.H{"data": stats})
+}
+
+// Enhanced Chat with Movement Integration
+func (h *Handler) ChatWithMovement(c *gin.Context) {
+	var request struct {
+		PlayerID string `json:"playerId" binding:"required"`
+		Message  string `json:"message" binding:"required"`
+		Context  string `json:"context,omitempty"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get player's current location
+	player, err := h.game.GetPlayerStatus(request.PlayerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get player status"})
+		return
+	}
+
+	currentLocation := &geo.Location{
+		Latitude:  player.Latitude,
+		Longitude: player.Longitude,
+	}
+
+	// Try to process as movement command first
+	clientIP := c.ClientIP()
+	sessionID := h.generateSessionID()
+
+	movementResult, err := h.game.ProcessAIMovementCommand(
+		request.PlayerID,
+		request.Message,
+		sessionID,
+		clientIP,
+	)
+
+	// If successful movement, return movement response
+	if err == nil && movementResult.Success {
+		c.JSON(http.StatusOK, gin.H{
+			"type": "movement",
+			"data": movementResult,
+		})
+		return
+	}
+
+	// Otherwise, process as regular AI chat
+	response, err := h.ai.ProcessVoiceCommand(request.Message, currentLocation)
+	if err != nil {
+		// Fallback to regular chat
+		response, err = h.ai.Chat(request.Message, request.Context)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"type":     "chat",
+		"response": response,
+		"data": gin.H{
+			"message": response,
+		},
+	})
+}
+
+func (h *Handler) generateSessionID() string {
+	return fmt.Sprintf("session_%d", time.Now().UnixNano())
 }

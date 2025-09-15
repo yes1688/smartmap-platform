@@ -170,11 +170,23 @@ go fmt ./...                 # 格式化代碼
 
 ### 容器操作
 ```bash
+# 正常容器操作（建議使用）
 podman-compose up -d                 # 啟動所有服務
+podman-compose build                 # 重新構建映像
+podman-compose up --build            # 構建並啟動
 podman-compose logs -f app          # 查看應用日誌
 podman-compose ps                   # 檢查服務狀態
 podman-compose down                 # 停止所有服務
+
+# 問題排除構建（僅問題時使用）
+podman-compose build app --no-cache  # 強制重建應用容器（清除快取）
+podman-compose up -d --build        # 構建並啟動所有服務
 ```
+
+**注意**: `--no-cache` 會顯著增加構建時間，僅在以下情況使用：
+- 之前構建失敗並留下問題快取
+- 重要代碼修改後構建異常
+- 新依賴或模組無法正確載入
 
 ## 問題排除
 

@@ -317,3 +317,10 @@ export const gameComputed = {
   },
 };
 
+// Combined store export for easier access
+export const gameStore = {
+  ...gameActions,
+  ...gameComputed,
+  player: gameComputed.currentPlayer,
+};
+

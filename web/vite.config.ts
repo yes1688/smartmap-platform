@@ -48,7 +48,7 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
-    strictPort: true, // 強制使用指定端口，避免自動切換
+    strictPort: false, // 允許自動切換端口
     proxy: {
       // API 代理到後端容器
       '/api': {

@@ -170,7 +170,7 @@ func initServices(db *gorm.DB) *Services {
 	aiService := ai.NewService(os.Getenv("OLLAMA_URL"))
 
 	// Initialize game service
-	gameService := game.NewService(db)
+	gameService := game.NewService(db, aiService)
 
 	// Initialize geo service
 	geoService := geo.NewService(db)
@@ -238,6 +238,7 @@ func setupRouter(services *Services) *gin.Engine {
 		apiGroup.GET("/game/status", apiHandler.GetGameStatus)
 		apiGroup.GET("/game/players", apiHandler.GetPlayers)
 		apiGroup.GET("/game/sessions", apiHandler.GetSessions)
+		apiGroup.POST("/game/sessions", apiHandler.CreateSession)
 		apiGroup.POST("/game/collect", apiHandler.CollectItem)
 		apiGroup.POST("/game/move", apiHandler.MovePlayer)
 	}

@@ -8,6 +8,9 @@ export const CONFIG = {
       historicalSites: '/historical-sites',
       voiceProcess: '/voice/process',
       aiChat: '/ai/chat',
+      aiMovement: '/ai/movement',
+      chatWithMovement: '/ai/chat-movement',
+      movementStats: '/ai/movement-stats',
       gameStatus: '/game/status',
       gameCollect: '/game/collect',
       gameMove: '/game/move'

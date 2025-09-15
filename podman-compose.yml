@@ -41,6 +41,7 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - OLLAMA_URL=http://host.containers.internal:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
       - PORT=${APP_PORT}
       - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
     ports:
