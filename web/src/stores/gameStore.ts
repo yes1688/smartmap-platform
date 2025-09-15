@@ -246,8 +246,8 @@ function createDefaultPlayer(playerId: string) {
   const defaultPlayer = {
     id: playerId,
     name: `Player_${playerId.substring(0, 8)}`,
-    latitude: CONFIG.cesium.defaultView.latitude,
-    longitude: CONFIG.cesium.defaultView.longitude,
+    latitude: CONFIG.map.defaultView.latitude,
+    longitude: CONFIG.map.defaultView.longitude,
     level: 1,
     score: 0,
     items: 0,

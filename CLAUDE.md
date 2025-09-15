@@ -6,8 +6,9 @@
 **業務領域**: 3D 地圖視覺化、AI 語音互動、遊戲化教育平台
 
 ## 當前工作狀態
-**最後更新**: 2025-09-14 18:25
-**主要問題**: 版面改了多次都未果
+**最後更新**: 2025-09-15 14:17
+**主要問題**: ✅ 已解決 - CesiumJS 完全移除，改用 Deck.gl + MapLibre
+**重要設定**: 前端開發服務器必須固定使用 port 3000，禁止自動切換到其他端口
 
 ## 核心技術架構
 
@@ -20,10 +21,11 @@
 
 ### 前端 (SolidJS + Vite)
 - **框架**: SolidJS 1.8.22
-- **3D 引擎**: CesiumJS 1.111.0
+- **3D 引擎**: Deck.gl + MapLibre GL JS (已取代 CesiumJS)
 - **樣式**: TailwindCSS
 - **狀態管理**: SolidJS Store
 - **構建工具**: Vite 5.4.0
+- **重要**: 開發服務器必須固定使用 port 3000
 
 ## 專案結構
 ```
@@ -51,11 +53,15 @@ intelligent-spatial-platform/
 
 ## 開發環境設定
 
-### 前端開發服務器
+### 前端開發服務器（推薦使用容器）
 ```bash
+# 使用容器啟動前端開發服務器（推薦）
+podman-compose up -d frontend
+# 運行在 http://localhost:3000
+
+# 傳統方式（僅在容器有問題時使用）
 cd web
 npm run dev
-# 運行在 http://localhost:3000
 ```
 
 ### 後端服務器
@@ -153,11 +159,22 @@ GET    /health                   # 健康檢查
 
 ### 前端開發
 ```bash
+# 推薦使用容器管理前端開發（自動固定 port 3000）
+podman-compose up -d frontend        # 啟動前端開發容器
+podman-compose logs -f frontend      # 查看前端日誌
+podman-compose restart frontend      # 重啟前端容器
+podman-compose stop frontend         # 停止前端容器
+
+# 傳統方式（僅在容器有問題時使用）
 cd web
-npm run dev          # 開發服務器
-npm run build        # 生產構建
-npm run preview      # 預覽構建結果
-npm run type-check   # TypeScript 檢查
+# ⚠️ 重要：必須先關閉所有佔用 port 3000 的進程
+pkill -f "npm run dev" && pkill -f "vite"
+
+# 確保使用 port 3000，禁止自動切換端口
+PORT=3000 npm run dev    # 開發服務器 - 必須固定 port 3000
+npm run build           # 生產構建
+npm run preview         # 預覽構建結果
+npm run type-check      # TypeScript 檢查
 ```
 
 ### 後端開發
@@ -172,14 +189,18 @@ go fmt ./...                 # 格式化代碼
 ```bash
 # 正常容器操作（建議使用）
 podman-compose up -d                 # 啟動所有服務
+podman-compose up -d frontend        # 僅啟動前端開發服務器
+podman-compose up -d backend         # 僅啟動後端服務器
 podman-compose build                 # 重新構建映像
 podman-compose up --build            # 構建並啟動
 podman-compose logs -f app          # 查看應用日誌
+podman-compose logs -f frontend      # 查看前端日誌
 podman-compose ps                   # 檢查服務狀態
 podman-compose down                 # 停止所有服務
 
 # 問題排除構建（僅問題時使用）
 podman-compose build app --no-cache  # 強制重建應用容器（清除快取）
+podman-compose build frontend --no-cache  # 強制重建前端容器（清除快取）
 podman-compose up -d --build        # 構建並啟動所有服務
 ```
 

@@ -22,22 +22,26 @@ export const CONFIG = {
     url: import.meta.env.VITE_WS_URL || `ws://${window.location.host}/ws`
   },
 
-  // Cesium Configuration
-  cesium: {
-    // Use environment variable or default token
-    accessToken: import.meta.env.VITE_CESIUM_ACCESS_TOKEN ||
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI5M2M4Njk1My02Y2NiLTQ0OWQtYWZmOS05ZDJlNjRjN2YzODUiLCJpZCI6NzM2NzIsImlhdCI6MTc1NzgxNjA3MH0.Bps4cz4M6_sFFrh1qHjc8CS7UVGJBBchdsK4VhipdKA',
-
+  // Map Configuration (Deck.gl + MapLibre)
+  map: {
     // Default view settings
     defaultView: {
       longitude: 121.5654,  // Taipei, Taiwan
       latitude: 25.0330,
-      height: 1000
+      zoom: 15
     },
 
-    // Terrain provider settings
-    terrain: {
-      url: 'https://assets.agi.com/stk-terrain/world'
+    // Map style settings
+    style: {
+      cartoDB: {
+        tiles: [
+          'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+          'https://cartodb-basemaps-b.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+          'https://cartodb-basemaps-c.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        attribution: '© CartoDB, © OpenStreetMap contributors'
+      }
     }
   },
 
