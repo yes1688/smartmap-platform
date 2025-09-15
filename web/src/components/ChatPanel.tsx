@@ -93,10 +93,12 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
 
           // Update player position if successful
           if (movementData.newPosition) {
-            gameStore.updatePlayerPosition(
+            // Update player position directly in the store without API call
+            gameStore.setPlayerPosition(
               movementData.newPosition.latitude,
               movementData.newPosition.longitude
             );
+            console.log(`🐰 Player moved to: ${movementData.newPosition.latitude}, ${movementData.newPosition.longitude}`);
           }
 
           // Notify parent component about movement

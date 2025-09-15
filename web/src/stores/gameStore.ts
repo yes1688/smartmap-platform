@@ -174,6 +174,17 @@ export const gameActions = {
       console.error('Failed to end game session:', error);
     }
   },
+
+  // Set player position directly (for AI movement responses)
+  setPlayerPosition(latitude: number, longitude: number) {
+    if (!gameState.player) return;
+
+    // Update player position in the store
+    setGameState('player', 'latitude', latitude);
+    setGameState('player', 'longitude', longitude);
+
+    console.log(`🎮 Updated player position: ${latitude}, ${longitude}`);
+  },
 };
 
 // Helper functions

@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"math"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -64,11 +65,35 @@ func (p *MovementCommandParser) ParseMovementCommand(text string, currentLocatio
 
 	// Parse direct coordinates (highest confidence)
 	if coords := p.parseDirectCoordinates(text); coords != nil {
-		command.Type = "move"
-		command.Action = "absolute_move"
-		command.Destination = coords
-		command.Confidence = 0.9
-		return p.validateAndEnrichCommand(command, currentLocation)
+		// Check if this is a special marker for place name resolution
+		if coords.Latitude == 999.0 && coords.Longitude == 999.0 {
+			// Extract place name from Google Maps URL and use AI to resolve coordinates
+			placeName := p.extractPlaceNameFromURL(text)
+			if placeName != "" {
+				command.RequiresAI = true
+				aiLocation, err := p.resolveLocationWithAI(placeName, currentLocation)
+				if err != nil {
+					return nil, fmt.Errorf("failed to resolve Google Maps place URL location with AI: %v", err)
+				}
+
+				command.Type = "move"
+				command.Action = "absolute_move"
+				command.Destination = aiLocation
+				command.Parameters = map[string]interface{}{
+					"placeName": placeName,
+					"originalURL": text,
+				}
+				command.Confidence = 0.8 // Slightly lower confidence as it needs AI resolution
+				return p.validateAndEnrichCommand(command, currentLocation)
+			}
+		} else {
+			// Regular coordinates
+			command.Type = "move"
+			command.Action = "absolute_move"
+			command.Destination = coords
+			command.Confidence = 0.9
+			return p.validateAndEnrichCommand(command, currentLocation)
+		}
 	}
 
 	// Parse direction and distance (high confidence)
@@ -138,6 +163,13 @@ func (p *MovementCommandParser) isMovementCommand(text string) bool {
 }
 
 func (p *MovementCommandParser) parseDirectCoordinates(text string) *geo.Location {
+	// First try to extract from Google Maps URLs
+	if strings.Contains(text, "maps") && (strings.Contains(text, "google") || strings.Contains(text, "goo.gl")) {
+		if coords := p.parseGoogleMapsURL(text); coords != nil {
+			return coords
+		}
+	}
+
 	// Regex patterns for coordinates
 	patterns := []string{
 		`(\d+\.?\d*)\s*,\s*(\d+\.?\d*)`,           // 25.0330, 121.5654
@@ -159,6 +191,49 @@ func (p *MovementCommandParser) parseDirectCoordinates(text string) *geo.Locatio
 			}
 		}
 	}
+	return nil
+}
+
+func (p *MovementCommandParser) parseGoogleMapsURL(text string) *geo.Location {
+	// Parse Google Maps URLs like: https://www.google.com/maps/@23.0162277,120.2353557,15z
+	patterns := []string{
+		`@(-?\d+\.?\d*),(-?\d+\.?\d*),\d+z`,                    // @lat,lng,zoom
+		`@(-?\d+\.?\d*),(-?\d+\.?\d*)`,                         // @lat,lng
+		`ll=(-?\d+\.?\d*),(-?\d+\.?\d*)`,                       // ll=lat,lng
+		`center=(-?\d+\.?\d*),(-?\d+\.?\d*)`,                   // center=lat,lng
+		`q=(-?\d+\.?\d*),(-?\d+\.?\d*)`,                        // q=lat,lng
+		`place/[^/]*/@(-?\d+\.?\d*),(-?\d+\.?\d*)`,             // place/name/@lat,lng
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(text)
+		if len(matches) >= 3 {
+			lat, err1 := strconv.ParseFloat(matches[1], 64)
+			lng, err2 := strconv.ParseFloat(matches[2], 64)
+			if err1 == nil && err2 == nil {
+				// Validate coordinates are within reasonable bounds
+				if lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 {
+					return &geo.Location{
+						Latitude:  lat,
+						Longitude: lng,
+					}
+				}
+			}
+		}
+	}
+
+	// Check if it's a Google Maps place URL like: https://www.google.com/maps/place/{location_name}
+	placeName := p.extractPlaceNameFromURL(text)
+	if placeName != "" {
+		// Return a special marker indicating this is a place name that needs AI resolution
+		// This will be handled by the calling function
+		return &geo.Location{
+			Latitude:  999.0, // Special marker for place name
+			Longitude: 999.0,
+		}
+	}
+
 	return nil
 }
 
@@ -405,10 +480,14 @@ type MovementAudit struct {
 
 func (p *MovementCommandParser) LogMovementCommand(playerID, sessionID, ipAddress string, command *MovementCommand, success bool, errorMsg string) *MovementAudit {
 	now := time.Now()
+	originalText := ""
+	if command != nil {
+		originalText = command.OriginalText
+	}
 	audit := &MovementAudit{
 		PlayerID:      playerID,
 		Command:       command,
-		OriginalInput: command.OriginalText,
+		OriginalInput: originalText,
 		ParsedAt:      now,
 		Success:       success,
 		ErrorMessage:  errorMsg,
@@ -421,4 +500,36 @@ func (p *MovementCommandParser) LogMovementCommand(playerID, sessionID, ipAddres
 	}
 
 	return audit
+}
+
+// extractPlaceNameFromURL extracts place name from Google Maps place URL
+// Example: https://www.google.com/maps/place/台北101 -> "台北101"
+func (p *MovementCommandParser) extractPlaceNameFromURL(text string) string {
+	// Pattern for Google Maps place URLs
+	patterns := []string{
+		`https?://(?:www\.)?google\.com/maps/place/([^/?]+)`,          // place/name
+		`https?://maps\.google\.com/maps/place/([^/?]+)`,              // maps.google.com version
+		`https?://(?:www\.)?google\.com\.tw/maps/place/([^/?]+)`,       // Taiwan Google domain
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(text)
+		if len(matches) >= 2 {
+			// URL decode the place name
+			placeName := matches[1]
+			// Replace URL encoded characters
+			placeName = strings.ReplaceAll(placeName, "%E5%8F%B0%E5%8C%97101", "台北101") // Example: URL encoded 台北101
+			placeName = strings.ReplaceAll(placeName, "+", " ")
+			placeName = strings.ReplaceAll(placeName, "%20", " ")
+
+			// Simple URL decode for common Chinese characters (this could be enhanced)
+			if decoded, err := url.QueryUnescape(placeName); err == nil {
+				return decoded
+			}
+			return placeName
+		}
+	}
+
+	return ""
 }
