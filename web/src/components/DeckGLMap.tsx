@@ -122,7 +122,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         style: terrainMapStyle,
         center: [playerPosition().longitude, playerPosition().latitude],
         zoom: 15,
-        pitch: 0,
+        pitch: 30, // 30度傾斜角，提供3D視角
         bearing: 0
       });
 
