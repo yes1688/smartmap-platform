@@ -100,10 +100,17 @@ const App: Component = () => {
       const result = await response.json();
       console.log('🤖 AI 回應:', result);
 
-      // 如果是移動指令，會自動執行移動
+      // 如果是移動指令，更新前端 gameStore
       if (result.type === 'movement' && result.data?.success) {
         console.log('🐰 兔子移動成功:', result.data.newPosition);
-        // 地圖會自動跟隨，因為 DeckGLMap 監聽 gameStore 變化
+        // 更新前端 gameStore，觸發地圖更新
+        if (result.data.newPosition?.latitude && result.data.newPosition?.longitude) {
+          await gameActions.updatePlayerPosition(
+            result.data.newPosition.latitude,
+            result.data.newPosition.longitude
+          );
+          console.log('✅ 前端 gameStore 已更新，貓咪應該移動了');
+        }
       }
 
     } catch (error) {

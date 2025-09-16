@@ -5,6 +5,22 @@ interface VoiceControlProps {
   onVoiceCommand: (text: string) => void;
 }
 
+interface BrowserInfo {
+  name: string;
+  mimeType: string;
+  ext: string;
+  isSupported: boolean;
+  webCodecsSupported?: boolean;
+  recordingMethod?: 'webcodecs' | 'mediarecorder';
+}
+
+interface WebCodecsInfo {
+  audioEncoder: boolean;
+  audioDecoder: boolean;
+  opusSupported: boolean;
+  fullSupported: boolean;
+}
+
 const VoiceControl: Component<VoiceControlProps> = (props) => {
   const [isRecording, setIsRecording] = createSignal(false);
   const [isProcessing, setIsProcessing] = createSignal(false);
@@ -12,19 +28,122 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
   const [error, setError] = createSignal('');
 
   let mediaRecorder: MediaRecorder | null = null;
+  let audioEncoder: AudioEncoder | null = null;
   let audioChunks: Blob[] = [];
+  let audioPackets: Uint8Array[] = [];
   let recordingStartTime: number = 0;
+
+  // WebCodecs 支援檢測 - 來自 Speech Ear
+  const detectWebCodecsSupport = (): WebCodecsInfo => {
+    const hasAudioEncoder = typeof AudioEncoder !== 'undefined';
+    const hasAudioDecoder = typeof AudioDecoder !== 'undefined';
+
+    let opusSupported = false;
+    if (hasAudioEncoder) {
+      try {
+        const testConfig = {
+          codec: 'opus',
+          sampleRate: 48000,
+          numberOfChannels: 1,
+          bitrate: 128000
+        };
+        // 簡化檢測邏輯，直接嘗試創建編碼器
+        try {
+          const testEncoder = new AudioEncoder({
+            output: () => {},
+            error: () => {}
+          });
+          testEncoder.configure(testConfig);
+          testEncoder.close();
+          opusSupported = true;
+        } catch {
+          opusSupported = false;
+        }
+      } catch (e) {
+        console.warn('WebCodecs OPUS 支援檢測失敗:', e);
+        opusSupported = false;
+      }
+    }
+
+    const fullSupported = hasAudioEncoder && hasAudioDecoder && opusSupported;
+
+    return {
+      audioEncoder: hasAudioEncoder,
+      audioDecoder: hasAudioDecoder,
+      opusSupported: opusSupported,
+      fullSupported: fullSupported
+    };
+  };
+
+  // 檢測瀏覽器和支援的格式 - 來自 Speech Ear 實證實現
+  const detectBrowser = (): BrowserInfo => {
+    const ua = navigator.userAgent;
+    const webCodecs = detectWebCodecsSupport();
+
+    if (ua.includes('Chrome') && !ua.includes('Edge')) {
+      const mimeType = 'audio/webm;codecs=opus';
+      return {
+        name: 'Chrome',
+        mimeType,
+        ext: 'webm',
+        isSupported: MediaRecorder.isTypeSupported(mimeType),
+        webCodecsSupported: webCodecs.fullSupported,
+        recordingMethod: webCodecs.fullSupported ? 'webcodecs' : 'mediarecorder'
+      };
+    } else if (ua.includes('Edge')) {
+      const mimeType = 'audio/webm;codecs=opus';
+      return {
+        name: 'Edge',
+        mimeType,
+        ext: 'webm',
+        isSupported: MediaRecorder.isTypeSupported(mimeType),
+        webCodecsSupported: webCodecs.fullSupported,
+        recordingMethod: webCodecs.fullSupported ? 'webcodecs' : 'mediarecorder'
+      };
+    } else if (ua.includes('Firefox')) {
+      const mimeType = 'audio/ogg;codecs=opus';
+      return {
+        name: 'Firefox',
+        mimeType,
+        ext: 'ogg',
+        isSupported: MediaRecorder.isTypeSupported(mimeType),
+        webCodecsSupported: webCodecs.fullSupported,
+        recordingMethod: webCodecs.fullSupported ? 'webcodecs' : 'mediarecorder'
+      };
+    } else if (ua.includes('Safari')) {
+      const mimeType = 'audio/mp4';
+      return {
+        name: 'Safari',
+        mimeType,
+        ext: 'mp4',
+        isSupported: MediaRecorder.isTypeSupported(mimeType),
+        webCodecsSupported: webCodecs.fullSupported,
+        recordingMethod: webCodecs.fullSupported ? 'webcodecs' : 'mediarecorder'
+      };
+    }
+
+    // 未知瀏覽器，嘗試通用格式
+    const fallbackMime = 'audio/webm';
+    return {
+      name: 'Unknown',
+      mimeType: fallbackMime,
+      ext: 'webm',
+      isSupported: MediaRecorder.isTypeSupported(fallbackMime),
+      webCodecsSupported: webCodecs.fullSupported,
+      recordingMethod: webCodecs.fullSupported ? 'webcodecs' : 'mediarecorder'
+    };
+  };
 
   // 開始錄音
   const startRecording = async () => {
     try {
       setError('');
 
-      // 請求麥克風權限 - 配置匹配 Speech Ear API
+      // 使用 Speech Ear 的音頻配置
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          sampleRate: 48000, // 修復：使用 48kHz 匹配 Speech Ear API
-          channelCount: 1,   // 單聲道
+          sampleRate: 48000,
+          channelCount: 1,
           echoCancellation: true,
           noiseSuppression: true
         }
@@ -40,49 +159,26 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
         console.log(`  - 配置匹配: ${trackSettings.sampleRate === 48000 ? '✅ 一致' : '⚠️ 不匹配'}`);
       }
 
-      // 頂級方式：直接使用最穩定的 OGG-OPUS 格式
-      // 根據實際 API 測試，強制使用 OGG-OPUS 避免 WebM-OPUS 相容性問題
-      let mimeType = 'audio/ogg;codecs=opus'; // 業界標準，API 完全支援
-      let fileName = 'recording.ogg';
+      // 使用 Speech Ear 的瀏覽器檢測邏輯
+      const browser = detectBrowser();
+      console.log('🌐 檢測到瀏覽器:', browser);
+      console.log('🚀 WebCodecs 支援:', browser.webCodecsSupported);
+      console.log('🎤 錄音方式:', browser.recordingMethod);
 
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // Chrome/Edge fallback to WebM-OPUS (如果 OGG 不支援)
-        mimeType = 'audio/webm;codecs=opus';
-        fileName = 'recording.webm';
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-          // 最後手段：WAV
-          mimeType = 'audio/wav';
-          fileName = 'recording.wav';
-        }
+      if (!browser.isSupported) {
+        throw new Error(`瀏覽器 ${browser.name} 不支援音頻格式 ${browser.mimeType}`);
       }
 
-      console.log(`🎵 使用格式: ${mimeType}`);
+      // 智能錄音方式選擇
+      if (browser.recordingMethod === 'webcodecs' && browser.webCodecsSupported) {
+        console.log('🚀 使用 WebCodecs 硬體加速錄音');
+        await startWebCodecsRecording(stream);
+      } else {
+        console.log('📼 使用 MediaRecorder 相容模式錄音');
+        await startMediaRecorderRecording(stream);
+      }
 
-      mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        audioBitsPerSecond: 64000 // 優化位元率
-      });
-
-      audioChunks = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunks, { type: mimeType });
-        stream.getTracks().forEach(track => track.stop());
-
-        // 傳送到語音助手 API
-        await transcribeAudio(audioBlob);
-      };
-
-      mediaRecorder.start(100); // 每100ms收集一次數據，提高響應速度
       recordingStartTime = Date.now();
-      setIsRecording(true);
-      console.log('🎤 開始錄音，格式:', mimeType);
 
     } catch (err) {
       console.error('❌ 錄音失敗:', err);
@@ -90,18 +186,149 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
     }
   };
 
+  // WebCodecs 錄音實現
+  const startWebCodecsRecording = async (stream: MediaStream) => {
+    console.log('🚀 啟動 WebCodecs 硬體加速錄音');
+
+    audioPackets = [];
+
+    try {
+      audioEncoder = new AudioEncoder({
+        output: (chunk, metadata) => {
+          console.log(`🎵 WebCodecs 獨立包輸出: ${chunk.byteLength} bytes`);
+          const packetData = new Uint8Array(chunk.byteLength);
+          chunk.copyTo(packetData);
+          audioPackets.push(packetData);
+          console.log(`📦 收集到 OPUS 包 ${audioPackets.length}: ${packetData.length} bytes`);
+        },
+        error: (error) => {
+          console.error('🚨 WebCodecs 編碼錯誤:', error);
+          setError(`WebCodecs 編碼失敗: ${error.message}`);
+        }
+      });
+
+      const optimizedEncoderConfig = {
+        codec: 'opus',
+        sampleRate: 48000,
+        numberOfChannels: 1,
+        bitrate: 96000,
+      };
+
+      audioEncoder.configure(optimizedEncoderConfig);
+
+      const track = stream.getAudioTracks()[0];
+      const processor = new MediaStreamTrackProcessor({ track });
+      const reader = processor.readable.getReader();
+
+      const processAudioFrames = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          if (audioEncoder && audioEncoder.state === 'configured') {
+            try {
+              audioEncoder.encode(value);
+            } catch (err) {
+              console.error('🚨 音頻幀編碼失敗:', err);
+            }
+          }
+          value.close();
+        }
+      };
+
+      processAudioFrames().catch(err => {
+        console.error('🚨 音頻處理流程錯誤:', err);
+        setError(`WebCodecs 音頻處理失敗: ${err.message}`);
+      });
+
+      setIsRecording(true);
+      console.log('✅ WebCodecs 錄音已啟動');
+
+    } catch (error) {
+      console.error('🚨 WebCodecs 初始化失敗:', error);
+      setError(`WebCodecs 初始化失敗: ${error.message}`);
+    }
+  };
+
+  // MediaRecorder 錄音實現
+  const startMediaRecorderRecording = async (stream: MediaStream) => {
+    console.log('📼 啟動 MediaRecorder 相容模式錄音');
+
+    const browser = detectBrowser();
+    const mimeType = browser.mimeType;
+
+    mediaRecorder = new MediaRecorder(stream, {
+      mimeType,
+      audioBitsPerSecond: 64000
+    });
+
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      const audioBlob = new Blob(audioChunks, { type: mimeType });
+
+      console.log(`✅ MediaRecorder 錄音完成 - 格式: ${mimeType}, 大小: ${audioBlob.size} bytes`);
+
+      stream.getTracks().forEach(track => track.stop());
+      await transcribeAudio(audioBlob);
+    };
+
+    mediaRecorder.start();
+    setIsRecording(true);
+    console.log('✅ MediaRecorder 錄音已啟動');
+  };
+
   // 停止錄音
   const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state === 'recording') {
+    const browser = detectBrowser();
+
+    if (browser.recordingMethod === 'webcodecs' && audioEncoder) {
+      console.log('🛑 停止 WebCodecs 錄音');
+      try {
+        audioEncoder.flush();
+        audioEncoder.close();
+        audioEncoder = null;
+
+        if (audioPackets.length > 0) {
+          const packetsData = {
+            format: 'webcodecs_opus_packets',
+            packet_count: audioPackets.length,
+            packets: audioPackets.map(packet => Array.from(packet))
+          };
+
+          const jsonBlob = new Blob([JSON.stringify(packetsData)], { type: 'application/json' });
+
+          console.log(`✅ WebCodecs 錄音完成 - 格式: 獨立包模式, 包數量: ${audioPackets.length}, JSON 大小: ${jsonBlob.size} bytes`);
+
+          transcribeAudio(jsonBlob);
+        } else {
+          console.warn('⚠️ WebCodecs 錄音沒有收集到獨立包');
+          setError('錄音失敗：沒有收集到音頻包數據');
+        }
+
+      } catch (error) {
+        console.error('🚨 WebCodecs 停止錄音時出錯:', error);
+        setError('停止錄音時發生錯誤');
+      }
+
+    } else if (mediaRecorder && mediaRecorder.state === 'recording') {
+      console.log('🛑 停止 MediaRecorder 錄音');
       mediaRecorder.stop();
-      setIsRecording(false);
-      setIsProcessing(true);
-      console.log('🛑 停止錄音');
     }
+
+    setIsRecording(false);
+    setIsProcessing(true);
   };
 
   // 語音轉文字
   const transcribeAudio = async (audioBlob: Blob) => {
+    console.log('🎯 transcribeAudio 函數被呼叫');
     try {
       // 檢查錄音時間和大小
       const recordingDuration = Date.now() - recordingStartTime;
@@ -112,26 +339,34 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
         return;
       }
 
-      if (audioBlob.size < 1000) {
+      if (audioBlob.size < 100) {
         setError('音頻數據太小，請重新錄音');
         return;
       }
 
       const formData = new FormData();
-      // 使用 Care Voice 的簡化方式 - 只發送音頻檔案
-      // 根據實際格式設置檔案名稱
-      let fileName = 'recording.ogg'; // 預設
-      if (audioBlob.type.includes('webm')) fileName = 'recording.webm';
-      else if (audioBlob.type.includes('ogg')) fileName = 'recording.ogg';
-      else if (audioBlob.type.includes('wav')) fileName = 'recording.wav';
-      else if (audioBlob.type.includes('mp4')) fileName = 'recording.mp4';
+      const browser = detectBrowser();
 
-      formData.append('audio', audioBlob, fileName);
+      // 智能上傳格式選擇
+      if (audioBlob.type === 'application/json' && browser.recordingMethod === 'webcodecs') {
+        // WebCodecs 獨立包模式
+        const fileName = 'webcodecs-packets.json';
+        formData.append('audio_packets', audioBlob, fileName);
+
+        console.log(`🚀 WebCodecs 獨立包上傳 - 檔案: ${fileName}, MIME: ${audioBlob.type}, 大小: ${audioBlob.size} bytes`);
+        console.log('🎯 使用統一端點，JSON 格式自動檢測');
+      } else {
+        // MediaRecorder 傳統格式
+        const fileName = `recording.${browser.ext}`;
+        formData.append('audio', audioBlob, fileName);
+
+        console.log(`📼 MediaRecorder 上傳 - 檔案: ${fileName}, MIME: ${audioBlob.type}, 瀏覽器: ${browser.name}`);
+        console.log('🎯 使用統一端點，二進制格式自動檢測');
+      }
 
       console.log('🔄 傳送音頻到 Speech Ear API...');
       console.log('📁 音頻大小:', (audioBlob.size / 1024).toFixed(2), 'KB');
       console.log('🎵 音頻類型:', audioBlob.type);
-      console.log('📄 檔案名稱:', fileName);
       console.log('📊 音頻 chunks 數量:', audioChunks.length);
 
       const speechEarUrl = import.meta.env.VITE_SPEECH_EAR_URL || 'http://localhost:3001';
@@ -143,6 +378,8 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.log('🚨 Speech Ear API 錯誤回應:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
