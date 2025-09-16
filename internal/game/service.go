@@ -12,10 +12,11 @@ import (
 )
 
 type Service struct {
-	db        *gorm.DB
-	aiService *ai.Service
-	movementParser *ai.MovementCommandParser
-	rateLimiter    map[string]*RateLimit
+	db               *gorm.DB
+	aiService        *ai.Service
+	geocodingService *geo.GeocodingService
+	movementParser   *ai.MovementCommandParser
+	rateLimiter      map[string]*RateLimit
 }
 
 type CollectResult struct {
@@ -45,14 +46,22 @@ type AIMovementResult struct {
 }
 
 func NewService(db *gorm.DB, aiService *ai.Service) *Service {
-	service := &Service{
-		db:          db,
-		aiService:   aiService,
-		rateLimiter: make(map[string]*RateLimit),
+	// Initialize geocoding service
+	geocodingService, err := geo.NewGeocodingService()
+	if err != nil {
+		// Log error but don't fail service initialization
+		fmt.Printf("Warning: Failed to initialize geocoding service in game service: %v\n", err)
 	}
 
-	// Initialize movement parser
-	service.movementParser = ai.NewMovementCommandParser(aiService)
+	service := &Service{
+		db:               db,
+		aiService:        aiService,
+		geocodingService: geocodingService,
+		rateLimiter:      make(map[string]*RateLimit),
+	}
+
+	// Initialize movement parser with geocoding service
+	service.movementParser = ai.NewMovementCommandParser(aiService, geocodingService)
 
 	return service
 }
@@ -400,9 +409,9 @@ func (s *Service) validateMovementSecurity(moveCmd *ai.MovementCommand, currentL
 	distance := calculateDistance(currentLocation.Latitude, currentLocation.Longitude,
 		moveCmd.Destination.Latitude, moveCmd.Destination.Longitude)
 
-	// Prevent teleportation-like movements
-	if distance > 10000 { // 10km max single movement
-		return fmt.Errorf("movement distance too large: %.2f meters (max: 10000 meters)", distance)
+	// Prevent teleportation-like movements (allow Taiwan-wide travel)
+	if distance > 500000 { // 500km max single movement (covers all of Taiwan)
+		return fmt.Errorf("movement distance too large: %.2f meters (max: 500000 meters)", distance)
 	}
 
 	// Check confidence level

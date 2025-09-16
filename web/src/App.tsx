@@ -1,10 +1,11 @@
 import { Component, onMount, createSignal, Show } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import Header from '@/components/Header';
-import CesiumMap from '@/components/CesiumMap';
+import DeckGLMap from '@/components/DeckGLMap';
 import GamePanel from '@/components/GamePanel';
 import ChatPanel from '@/components/ChatPanel';
 import VoicePanel from '@/components/VoicePanel';
+import VoiceControl from '@/components/VoiceControl';
 import HistoricalSitePanel from '@/components/HistoricalSitePanel';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { WelcomeModal } from '@/components/WelcomeModal';
@@ -74,6 +75,42 @@ const App: Component = () => {
     setShowWelcomeModal(false);
   };
 
+  // 處理語音指令
+  const handleVoiceCommand = async (text: string) => {
+    console.log('🎤 收到語音指令:', text);
+
+    try {
+      // 傳送語音指令到 AI 聊天 API
+      const response = await fetch('http://localhost:8081/api/v1/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: text,
+          playerId: userId(),
+          context: 'voice_command'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('🤖 AI 回應:', result);
+
+      // 如果是移動指令，會自動執行移動
+      if (result.type === 'movement' && result.data?.success) {
+        console.log('🐰 兔子移動成功:', result.data.newPosition);
+        // 地圖會自動跟隨，因為 DeckGLMap 監聽 gameStore 變化
+      }
+
+    } catch (error) {
+      console.error('❌ 語音指令處理失敗:', error);
+    }
+  };
+
   function generateUserId(): string {
     return 'user_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
   }
@@ -111,7 +148,7 @@ const App: Component = () => {
         <div class="relative w-full h-full" style="height: 100%;">
           {/* Map Interface */}
           <div class="absolute inset-0 w-full h-full" style="height: 100%;">
-            <CesiumMap
+            <DeckGLMap
               onPlayerMove={handlePlayerMove}
               onHistoricalSiteClick={handleShowHistoricalSite}
             />
@@ -126,6 +163,11 @@ const App: Component = () => {
                 onToggle={handleToggleGamePanel}
               />
             </div> */}
+
+            {/* 語音控制組件 */}
+            <div class="pointer-events-auto">
+              <VoiceControl onVoiceCommand={handleVoiceCommand} />
+            </div>
 
             {/* Floating Action Button (Mobile) */}
             <div class="lg:hidden fixed bottom-6 right-6 z-40 pointer-events-auto">

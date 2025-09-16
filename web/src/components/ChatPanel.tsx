@@ -79,26 +79,33 @@ const ChatPanel: Component<ChatPanelProps> = (props) => {
       }
 
       const data = await response.json();
+      console.log('🔍 ChatPanel received data:', data);
 
       let responseMessage = '';
       let isMovementCommand = false;
 
       if (data.type === 'movement' && data.data) {
         // Handle movement response
+        console.log('🎯 Movement command detected!');
+        console.log('🔍 Movement data:', data.data);
         isMovementCommand = true;
         const movementData = data.data;
 
         if (movementData.success) {
           responseMessage = `🐰 ${movementData.message}`;
+          console.log('✅ Movement successful!');
 
           // Update player position if successful
           if (movementData.newPosition) {
+            console.log('🎯 Updating player position:', movementData.newPosition);
             // Update player position directly in the store without API call
             gameStore.setPlayerPosition(
               movementData.newPosition.latitude,
               movementData.newPosition.longitude
             );
             console.log(`🐰 Player moved to: ${movementData.newPosition.latitude}, ${movementData.newPosition.longitude}`);
+          } else {
+            console.warn('⚠️ No newPosition in movement data');
           }
 
           // Notify parent component about movement

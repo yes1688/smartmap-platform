@@ -20,6 +20,7 @@ import (
 	"intelligent-spatial-platform/internal/ai"
 	"intelligent-spatial-platform/internal/game"
 	"intelligent-spatial-platform/internal/geo"
+	"intelligent-spatial-platform/internal/middleware"
 	"intelligent-spatial-platform/internal/voice"
 	"intelligent-spatial-platform/internal/websocket"
 )
@@ -230,17 +231,32 @@ func setupRouter(services *Services) *gin.Engine {
 	apiHandler := api.NewHandler(services.DB, services.AI, services.Game, services.Geo, services.Voice)
 	apiGroup := router.Group("/api/v1")
 	{
+		// Basic routes (no rate limiting)
 		apiGroup.GET("/locations", apiHandler.GetLocations)
 		apiGroup.POST("/locations", apiHandler.CreateLocation)
 		apiGroup.GET("/historical-sites", apiHandler.GetHistoricalSites)
-		apiGroup.POST("/voice/process", apiHandler.ProcessVoice)
-		apiGroup.POST("/ai/chat", apiHandler.ChatWithAI)
 		apiGroup.GET("/game/status", apiHandler.GetGameStatus)
 		apiGroup.GET("/game/players", apiHandler.GetPlayers)
 		apiGroup.GET("/game/sessions", apiHandler.GetSessions)
 		apiGroup.POST("/game/sessions", apiHandler.CreateSession)
 		apiGroup.POST("/game/collect", apiHandler.CollectItem)
-		apiGroup.POST("/game/move", apiHandler.MovePlayer)
+
+		// Rate limited routes for AI and movement (uses geocoding)
+		aiGroup := apiGroup.Group("/")
+		aiGroup.Use(middleware.GeocodingRateLimit())
+		{
+			aiGroup.POST("/voice/process", apiHandler.ProcessVoice)
+			aiGroup.POST("/ai/chat", apiHandler.ChatWithAI)
+			aiGroup.POST("/game/move", apiHandler.MovePlayer)
+			aiGroup.POST("/places/search", apiHandler.SearchPlace) // Google Places API endpoint
+		}
+
+		// Strict rate limiting for debugging endpoints
+		debugGroup := apiGroup.Group("/debug")
+		debugGroup.Use(middleware.StrictRateLimit())
+		{
+			debugGroup.POST("/movement", apiHandler.DebugMovement)
+		}
 	}
 
 	// WebSocket endpoint

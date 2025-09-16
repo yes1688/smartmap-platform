@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>測試貓咪模型</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #container {
+            width: 800px;
+            height: 600px;
+            border: 2px solid #444;
+            margin: 20px auto;
+        }
+        .info {
+            text-align: center;
+            margin: 20px;
+        }
+        .loading {
+            color: yellow;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🐱 貓咪模型測試</h1>
+        <div id="status" class="loading">正在載入模型...</div>
+        <div>用滑鼠旋轉視角</div>
+    </div>
+
+    <div id="container"></div>
+
+    <script>
+        // 使用全域的 THREE 物件
+
+        const container = document.getElementById('container');
+        const status = document.getElementById('status');
+
+        // 創建場景
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // 天藍色背景
+
+        // 創建相機
+        const camera = new THREE.PerspectiveCamera(75, 800/600, 0.1, 1000);
+        camera.position.set(0, 2, 5);
+
+        // 創建渲染器
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(800, 600);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // 添加控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // 添加燈光
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        directionalLight.castShadow = true;
+        scene.add(directionalLight);
+
+        // 添加地面
+        const groundGeometry = new THREE.PlaneGeometry(10, 10);
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x90EE90 });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // 載入貓咪模型
+        const loader = new THREE.OBJLoader();
+
+        loader.load(
+            '/models/12221_Cat_v1_l3.obj',
+            function (object) {
+                console.log('✅ 貓咪模型載入成功！', object);
+                status.textContent = '✅ 貓咪模型載入成功！';
+                status.className = 'success';
+
+                // 設置模型
+                object.scale.set(0.01, 0.01, 0.01); // 縮小模型
+                object.position.set(0, 0, 0);
+
+                // 給模型上色
+                object.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshLambertMaterial({
+                            color: 0xFF6600 // 橘色貓咪
+                        });
+                        child.castShadow = true;
+                    }
+                });
+
+                scene.add(object);
+
+                // 計算模型邊界盒來調整視角
+                const box = new THREE.Box3().setFromObject(object);
+                const size = box.getSize(new THREE.Vector3());
+                console.log('📏 模型尺寸:', size);
+
+                // 調整相機位置
+                const maxDim = Math.max(size.x, size.y, size.z);
+                camera.position.set(maxDim * 2, maxDim, maxDim * 2);
+                controls.target.copy(box.getCenter(new THREE.Vector3()));
+                controls.update();
+            },
+            function (progress) {
+                console.log('📁 載入進度:', (progress.loaded / progress.total * 100) + '%');
+                status.textContent = `載入中... ${Math.round(progress.loaded / progress.total * 100)}%`;
+            },
+            function (error) {
+                console.error('❌ 貓咪模型載入失敗:', error);
+                status.textContent = '❌ 模型載入失敗！檢查檔案路徑是否正確';
+                status.className = 'error';
+
+                // 顯示一個替代的方塊
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = new THREE.MeshLambertMaterial({ color: 0xFF6600 });
+                const cube = new THREE.Mesh(geometry, material);
+                cube.position.set(0, 0.5, 0);
+                cube.castShadow = true;
+                scene.add(cube);
+
+                status.textContent += ' (顯示替代方塊)';
+            }
+        );
+
+        // 渲染循環
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // 添加一些調試信息
+        console.log('🔧 Three.js 版本:', THREE.REVISION);
+        console.log('📁 嘗試載入模型:', '/models/12221_Cat_v1_l3.obj');
+    </script>
+</body>
+</html>

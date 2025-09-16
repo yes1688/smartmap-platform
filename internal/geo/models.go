@@ -72,3 +72,19 @@ type Bounds struct {
 	East  float64 `json:"east"`
 	West  float64 `json:"west"`
 }
+
+// Taiwan boundary for validation
+var TaiwanBounds = &Bounds{
+	North: 25.5,  // Extended boundary
+	South: 21.8,  // Extended boundary to include Kenting
+	East:  122.2, // Extended boundary
+	West:  119.8, // Extended boundary
+}
+
+// IsWithinTaiwan checks if the given coordinates are within Taiwan boundaries
+func IsWithinTaiwan(latitude, longitude float64) bool {
+	return latitude >= TaiwanBounds.South &&
+		   latitude <= TaiwanBounds.North &&
+		   longitude >= TaiwanBounds.West &&
+		   longitude <= TaiwanBounds.East
+}

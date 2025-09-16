@@ -12,8 +12,9 @@ import (
 )
 
 type Service struct {
-	ollamaURL string
-	client    *http.Client
+	ollamaURL        string
+	client           *http.Client
+	geocodingService *geo.GeocodingService
 }
 
 type OllamaRequest struct {
@@ -28,8 +29,16 @@ type OllamaResponse struct {
 }
 
 func NewService(ollamaURL string) *Service {
+	// Initialize geocoding service
+	geocodingService, err := geo.NewGeocodingService()
+	if err != nil {
+		// Log error but don't fail service initialization
+		fmt.Printf("Warning: Failed to initialize geocoding service: %v\n", err)
+	}
+
 	return &Service{
-		ollamaURL: ollamaURL,
+		ollamaURL:        ollamaURL,
+		geocodingService: geocodingService,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -117,8 +126,8 @@ func (s *Service) GenerateGameResponse(action, result string) (string, error) {
 }
 
 func (s *Service) ProcessMovementCommand(command, playerID string, currentLocation *geo.Location) (string, error) {
-	// Create movement parser
-	parser := NewMovementCommandParser(s)
+	// Create movement parser with geocoding service
+	parser := NewMovementCommandParser(s, s.geocodingService)
 
 	// Parse the movement command
 	moveCmd, err := parser.ParseMovementCommand(command, currentLocation)

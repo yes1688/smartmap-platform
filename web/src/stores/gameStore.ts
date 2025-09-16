@@ -5,7 +5,15 @@ import { CONFIG } from '@/config';
 
 // Game state store
 const [gameState, setGameState] = createStore<GameState>({
-  player: undefined,
+  player: {
+    id: 'default-player',
+    name: 'Default Player',
+    latitude: CONFIG.map.defaultView.latitude,
+    longitude: CONFIG.map.defaultView.longitude,
+    level: 1,
+    score: 0,
+    items: 0,
+  },
   playerStats: {
     playerId: '',
     totalScore: 0,
@@ -226,8 +234,8 @@ async function createNewPlayer(playerId: string) {
       body: JSON.stringify({
         id: playerId,
         name: `Player_${playerId.substring(0, 8)}`,
-        latitude: CONFIG.cesium.defaultView.latitude,
-        longitude: CONFIG.cesium.defaultView.longitude,
+        latitude: CONFIG.map.defaultView.latitude,
+        longitude: CONFIG.map.defaultView.longitude,
       }),
     });
 

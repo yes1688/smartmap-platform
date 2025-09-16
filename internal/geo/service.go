@@ -8,11 +8,22 @@ import (
 )
 
 type Service struct {
-	db *gorm.DB
+	db        *gorm.DB
+	geocoding *GeocodingService
 }
 
 func NewService(db *gorm.DB) *Service {
-	return &Service{db: db}
+	// Initialize geocoding service
+	geocoding, err := NewGeocodingService()
+	if err != nil {
+		fmt.Printf("Warning: Failed to initialize geocoding service: %v\n", err)
+		geocoding = nil
+	}
+
+	return &Service{
+		db:        db,
+		geocoding: geocoding,
+	}
 }
 
 func (s *Service) GetAllLocations() ([]Location, error) {
@@ -155,6 +166,15 @@ func (s *Service) GetGeoFeatures(bounds map[string]float64) ([]GeoFeature, error
 	}
 
 	return features, nil
+}
+
+// GeocodeLocation searches for a location using the geocoding service
+func (s *Service) GeocodeLocation(locationName string) (*Location, error) {
+	if s.geocoding == nil {
+		return nil, fmt.Errorf("geocoding service not available")
+	}
+
+	return s.geocoding.GeocodeLocation(locationName)
 }
 
 func calculateDistance(lat1, lng1, lat2, lng2 float64) float64 {

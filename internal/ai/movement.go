@@ -13,8 +13,9 @@ import (
 )
 
 type MovementCommandParser struct {
-	aiService *Service
-	bounds    *geo.Bounds
+	aiService        *Service
+	geocodingService *geo.GeocodingService
+	bounds           *geo.Bounds
 }
 
 type MovementCommand struct {
@@ -32,18 +33,19 @@ type MovementCommand struct {
 	RequiresAI     bool                   `json:"requiresAI"`     // needs AI interpretation
 }
 
-// Taiwan boundary for safety checks
+// Taiwan boundary for safety checks (擴大範圍以包含墾丁等地點)
 var taiwanBounds = &geo.Bounds{
-	North: 25.3,
-	South: 22.0,
-	East:  122.0,
-	West:  120.0,
+	North: 25.5,  // 擴大北邊界
+	South: 21.8,  // 擴大南邊界以包含墾丁 (21.9518)
+	East:  122.2, // 擴大東邊界
+	West:  119.8, // 擴大西邊界
 }
 
-func NewMovementCommandParser(aiService *Service) *MovementCommandParser {
+func NewMovementCommandParser(aiService *Service, geocodingService *geo.GeocodingService) *MovementCommandParser {
 	return &MovementCommandParser{
-		aiService: aiService,
-		bounds:    taiwanBounds,
+		aiService:        aiService,
+		geocodingService: geocodingService,
+		bounds:          taiwanBounds,
 	}
 }
 
@@ -67,18 +69,18 @@ func (p *MovementCommandParser) ParseMovementCommand(text string, currentLocatio
 	if coords := p.parseDirectCoordinates(text); coords != nil {
 		// Check if this is a special marker for place name resolution
 		if coords.Latitude == 999.0 && coords.Longitude == 999.0 {
-			// Extract place name from Google Maps URL and use AI to resolve coordinates
+			// Extract place name from Google Maps URL and use geocoding to resolve coordinates
 			placeName := p.extractPlaceNameFromURL(text)
 			if placeName != "" {
-				command.RequiresAI = true
-				aiLocation, err := p.resolveLocationWithAI(placeName, currentLocation)
+				command.RequiresAI = false
+				geoLocation, err := p.resolveLocationWithGeocoding(placeName)
 				if err != nil {
-					return nil, fmt.Errorf("failed to resolve Google Maps place URL location with AI: %v", err)
+					return nil, fmt.Errorf("failed to resolve Google Maps place URL location with geocoding: %v", err)
 				}
 
 				command.Type = "move"
 				command.Action = "absolute_move"
-				command.Destination = aiLocation
+				command.Destination = geoLocation
 				command.Parameters = map[string]interface{}{
 					"placeName": placeName,
 					"originalURL": text,
@@ -96,13 +98,32 @@ func (p *MovementCommandParser) ParseMovementCommand(text string, currentLocatio
 		}
 	}
 
-	// Parse direction and distance (high confidence)
+	// Parse named locations using geocoding (HIGHEST PRIORITY)
+	if p.containsLocationName(text) {
+		// Extract the actual location name from the movement command
+		locationName := p.extractLocationFromCommand(text)
+		if locationName != "" {
+			command.RequiresAI = false
+			geoLocation, err := p.resolveLocationWithGeocoding(locationName)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve location with geocoding: %v", err)
+			}
+
+			command.Type = "go_to"
+			command.Action = "absolute_move"
+			command.Destination = geoLocation
+			command.Confidence = 0.9 // Highest confidence for named locations
+			return p.validateAndEnrichCommand(command, currentLocation)
+		}
+	}
+
+	// Parse direction and distance (lower priority)
 	if direction, distance := p.parseDirectionDistance(text); direction != "" {
 		command.Type = "move"
 		command.Action = "direction_move"
 		command.Direction = direction
 		command.Distance = distance
-		command.Confidence = 0.8
+		command.Confidence = 0.7
 		return p.validateAndEnrichCommand(command, currentLocation)
 	}
 
@@ -111,21 +132,6 @@ func (p *MovementCommandParser) ParseMovementCommand(text string, currentLocatio
 		command.Type = "move"
 		command.Action = "relative_move"
 		command.Destination = relativeMove
-		command.Confidence = 0.7
-		return p.validateAndEnrichCommand(command, currentLocation)
-	}
-
-	// Parse named locations using AI
-	if p.containsLocationName(text) {
-		command.RequiresAI = true
-		aiLocation, err := p.resolveLocationWithAI(text, currentLocation)
-		if err != nil {
-			return nil, fmt.Errorf("failed to resolve location with AI: %v", err)
-		}
-
-		command.Type = "go_to"
-		command.Action = "absolute_move"
-		command.Destination = aiLocation
 		command.Confidence = 0.6
 		return p.validateAndEnrichCommand(command, currentLocation)
 	}
@@ -302,10 +308,38 @@ func (p *MovementCommandParser) parseRelativeMovement(text string) *geo.Location
 
 func (p *MovementCommandParser) containsLocationName(text string) bool {
 	locationIndicators := []string{
-		"台北", "高雄", "台中", "台南", "桃園", "新竹", "基隆",
-		"中正紀念堂", "台北101", "故宮", "夜市", "火車站", "機場",
-		"公園", "學校", "醫院", "銀行", "便利商店", "餐廳",
-		"taipei", "kaohsiung", "taichung", "tainan",
+		// 主要城市
+		"台北", "高雄", "台中", "台南", "桃園", "新竹", "基隆", "嘉義", "彰化", "南投", "雲林", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "馬祖",
+
+		// 著名景點
+		"中正紀念堂", "台北101", "故宮", "夜市", "火車站", "機場", "總統府", "自由廣場", "龍山寺", "西門町", "九份", "淡水", "北投", "陽明山",
+		"日月潭", "阿里山", "太魯閣", "墾丁", "清境", "合歡山", "玉山", "溪頭", "杉林溪", "集集", "鹿港", "安平", "赤崁樓", "愛河", "旗津",
+		"佛光山", "義大世界", "六合夜市", "逢甲夜市", "一中商圈", "東海大學", "中興大學", "成功大學", "中山大學", "高雄大學",
+
+		// 地標建築
+		"公園", "學校", "醫院", "銀行", "便利商店", "餐廳", "百貨公司", "購物中心", "圖書館", "體育館", "游泳池", "電影院", "咖啡廳",
+		"郵局", "警察局", "消防隊", "市政府", "區公所", "教堂", "廟宇", "博物館", "美術館", "動物園", "植物園", "海洋館",
+
+		// 交通設施
+		"車站", "捷運站", "高鐵站", "機場", "港口", "碼頭", "停車場", "加油站", "客運站", "轉運站",
+
+		// 自然景觀
+		"海邊", "海灘", "沙灘", "山", "湖", "河", "溪", "瀑布", "溫泉", "森林", "國家公園", "風景區", "步道", "古道",
+
+		// 商業區域
+		"商圈", "老街", "市場", "傳統市場", "夜市", "商店街", "購物街", "美食街", "小吃街",
+
+		// 英文地名
+		"taipei", "kaohsiung", "taichung", "tainan", "taoyuan", "hsinchu", "keelung", "chiayi", "changhua", "nantou",
+		"yunlin", "pingtung", "yilan", "hualien", "taitung", "penghu", "kinmen", "matsu",
+		"sun moon lake", "alishan", "taroko", "kenting", "yangmingshan", "jiufen", "tamsui", "beitou",
+
+		// 大學
+		"大學", "學院", "科技大學", "技術學院", "師範大學", "醫學院", "university", "college",
+
+		// 更多地點類型指示詞
+		"附近", "旁邊", "對面", "前面", "後面", "左邊", "右邊", "裡面", "外面", "上面", "下面",
+		"這裡", "那裡", "哪裡", "某處", "地方", "位置", "地點", "景點", "據點", "站點",
 	}
 
 	lowerText := strings.ToLower(text)
@@ -314,40 +348,86 @@ func (p *MovementCommandParser) containsLocationName(text string) bool {
 			return true
 		}
 	}
-	return false
-}
 
-func (p *MovementCommandParser) resolveLocationWithAI(text string, currentLocation *geo.Location) (*geo.Location, error) {
-	prompt := fmt.Sprintf(`使用者想要移動到："%s"
-目前位置：緯度 %.6f，經度 %.6f
-
-請分析這個地點並回傳台灣境內最可能的座標。回傳格式必須是：
-COORDINATES: 緯度,經度
-例如：COORDINATES: 25.0330,121.5654
-
-如果無法識別地點，請回傳：UNKNOWN_LOCATION`,
-		text, currentLocation.Latitude, currentLocation.Longitude)
-
-	response, err := p.aiService.Chat(prompt, "你是地理位置解析專家，專門將地點名稱轉換為台灣境內的精確座標。")
-	if err != nil {
-		return nil, err
+	// 額外檢查：如果包含「到」、「去」等移動關鍵詞，也可能是地點移動
+	movementWithLocation := []string{
+		"到", "去", "前往", "移動到", "帶我去", "導航到", "走到", "跑到", "飛到",
+		"go to", "move to", "navigate to", "travel to", "head to",
 	}
 
-	// Parse AI response
-	re := regexp.MustCompile(`COORDINATES:\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)`)
-	matches := re.FindStringSubmatch(response)
-	if len(matches) >= 3 {
-		lat, err1 := strconv.ParseFloat(matches[1], 64)
-		lng, err2 := strconv.ParseFloat(matches[2], 64)
-		if err1 == nil && err2 == nil {
-			return &geo.Location{
-				Latitude:  lat,
-				Longitude: lng,
-			}, nil
+	for _, keyword := range movementWithLocation {
+		if strings.Contains(lowerText, strings.ToLower(keyword)) {
+			return true
 		}
 	}
 
-	return nil, fmt.Errorf("AI unable to resolve location")
+	return false
+}
+
+func (p *MovementCommandParser) extractLocationFromCommand(text string) string {
+	lowerText := strings.ToLower(text)
+
+	// Common patterns for movement commands in Chinese and English
+	patterns := []struct {
+		regex string
+		group int // which capture group contains the location name
+	}{
+		{`移動.*?到\s*([^，。！？\s]+)`, 1},    // 移動到{地點}
+		{`去\s*([^，。！？\s]+)`, 1},         // 去{地點}
+		{`前往\s*([^，。！？\s]+)`, 1},       // 前往{地點}
+		{`帶我去\s*([^，。！？\s]+)`, 1},     // 帶我去{地點}
+		{`導航到\s*([^，。！？\s]+)`, 1},     // 導航到{地點}
+		{`move.*?to\s+([^\s,\.!?]+)`, 1},   // move to {location}
+		{`go\s+to\s+([^\s,\.!?]+)`, 1},     // go to {location}
+		{`navigate\s+to\s+([^\s,\.!?]+)`, 1}, // navigate to {location}
+		{`travel\s+to\s+([^\s,\.!?]+)`, 1}, // travel to {location}
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern.regex)
+		matches := re.FindStringSubmatch(lowerText)
+		if len(matches) > pattern.group {
+			locationName := strings.TrimSpace(matches[pattern.group])
+			if locationName != "" {
+				return locationName
+			}
+		}
+	}
+
+	// If no specific pattern matches, try to extract location keywords
+	// Look for known location names in the text
+	locationKeywords := []string{
+		// 主要城市
+		"台北", "高雄", "台中", "台南", "桃園", "新竹", "基隆", "嘉義", "彰化", "南投", "雲林", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "馬祖",
+
+		// 著名景點
+		"墾丁", "台北101", "中正紀念堂", "故宮", "夜市", "火車站", "機場", "總統府", "自由廣場", "龍山寺", "西門町", "九份", "淡水", "北投", "陽明山",
+		"日月潭", "阿里山", "太魯閣", "清境", "合歡山", "玉山", "溪頭", "杉林溪", "集集", "鹿港", "安平", "赤崁樓", "愛河", "旗津",
+		"佛光山", "義大世界", "六合夜市", "逢甲夜市", "一中商圈", "東海大學", "中興大學", "成功大學", "中山大學", "高雄大學",
+	}
+
+	// Find the first location keyword in the text
+	for _, keyword := range locationKeywords {
+		if strings.Contains(lowerText, strings.ToLower(keyword)) {
+			return keyword
+		}
+	}
+
+	return ""
+}
+
+func (p *MovementCommandParser) resolveLocationWithGeocoding(locationName string) (*geo.Location, error) {
+	if p.geocodingService == nil {
+		return nil, fmt.Errorf("geocoding service not available")
+	}
+
+	// Use Nominatim (OpenStreetMap) to resolve location
+	location, err := p.geocodingService.GeocodeLocation(locationName)
+	if err != nil {
+		return nil, fmt.Errorf("geocoding failed: %v", err)
+	}
+
+	return location, nil
 }
 
 func (p *MovementCommandParser) validateAndEnrichCommand(command *MovementCommand, currentLocation *geo.Location) (*MovementCommand, error) {
@@ -371,8 +451,8 @@ func (p *MovementCommandParser) validateAndEnrichCommand(command *MovementComman
 	if currentLocation != nil {
 		distance := p.calculateDistance(currentLocation, command.Destination)
 
-		// Safety check: maximum single movement distance
-		maxDistance := 50000.0 // 50km
+		// Safety check: maximum single movement distance (Taiwan island width is about 400km)
+		maxDistance := 500000.0 // 500km - covers all of Taiwan
 		if distance > maxDistance {
 			return nil, fmt.Errorf("movement distance too large: %.2f meters (max: %.0f meters)", distance, maxDistance)
 		}

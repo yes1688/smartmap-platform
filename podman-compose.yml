@@ -44,6 +44,7 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - PORT=${APP_PORT}
       - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
     ports:
       - "${APP_PORT}:${APP_PORT}"
     depends_on:

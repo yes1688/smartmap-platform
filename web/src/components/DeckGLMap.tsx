@@ -2,6 +2,9 @@ import { Component, onMount, createEffect, createSignal, onCleanup } from 'solid
 import { Deck } from '@deck.gl/core';
 import { IconLayer, ScatterplotLayer } from '@deck.gl/layers';
 import { MapboxOverlay } from '@deck.gl/mapbox';
+import { SimpleMeshLayer } from '@deck.gl/mesh-layers';
+import { registerLoaders } from '@loaders.gl/core';
+import { OBJLoader } from '@loaders.gl/obj';
 import maplibregl from 'maplibre-gl';
 import { gameStore } from '@/stores/gameStore';
 
@@ -45,56 +48,88 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
     const player = gameStore.currentPlayer;
     if (player && (player.latitude !== playerPosition().latitude || player.longitude !== playerPosition().longitude)) {
       console.log('🎮 DeckGL detected player position change:', player.latitude, player.longitude);
-      setPlayerPosition({
+
+      const newPosition = {
         latitude: player.latitude,
         longitude: player.longitude
-      });
-      updateRabbitLayer();
+      };
+
+      setPlayerPosition(newPosition);
+      updateCatLayer();
+
+      // 🌟 新增：地圖視窗跟隨兔子移動
+      if (map) {
+        console.log('🗺️ Moving map viewport to follow cat:', newPosition);
+        map.easeTo({
+          center: [player.longitude, player.latitude],
+          zoom: 16, // 放大1級來更清楚查看貓咪
+          duration: 2000, // 2秒的平滑動畫
+          essential: true // 確保動畫會執行
+        });
+      }
     }
   });
 
-  // 創建兔子圖層
-  const createRabbitLayer = () => {
+  // 創建精美動物圖層 (使用真實貓咪模型)
+  const createCatLayer = () => {
     const player = gameStore.currentPlayer;
-    if (!player) return [];
+    console.log('🐱 Creating beautiful cat OBJ model, player data:', player);
+    if (!player) {
+      console.warn('⚠️ No player data available for cat layer');
+      return [];
+    }
+
+    // 🐱 精美貓咪模型數據
+    const catModelData = [{
+      position: [player.longitude, player.latitude, 8],
+      scale: [2.0, 2.0, 2.0], // 巨無霸貓咪！
+      rotation: [0, Math.PI/2, 0], // 正常站立 + 90度側身
+      color: [255, 255, 255, 255], // 使用模型原始顏色
+      id: player.id + '-beautiful-cat'
+    }];
+
+    console.log('🐱 Beautiful cat OBJ model layers: 2 total');
+    console.log('🐱 Cat position: [lng, lat, z]', [player.longitude, player.latitude, 8]);
 
     return [
-      new IconLayer({
-        id: 'rabbit-layer',
+      // 🎯 2D地面指示器：確保貓咪位置可見
+      new ScatterplotLayer({
+        id: 'cat-ground-indicator',
         data: [{
           position: [player.longitude, player.latitude],
-          size: 60,
-          color: [255, 107, 107, 255], // 可愛的紅色兔子
-          id: player.id
+          size: 12,
+          color: [255, 165, 0, 150] // 橘色指示器配合貓咪
         }],
-        iconAtlas: 'data:image/svg+xml;base64,' + btoa(`
-          <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-            <!-- 兔子身體 -->
-            <ellipse cx="32" cy="40" rx="18" ry="20" fill="#FFB6C1" stroke="#FF69B4" stroke-width="2"/>
-            <!-- 兔子頭 -->
-            <circle cx="32" cy="22" r="16" fill="#FFB6C1" stroke="#FF69B4" stroke-width="2"/>
-            <!-- 兔子耳朵 -->
-            <ellipse cx="24" cy="12" rx="4" ry="12" fill="#FFB6C1" stroke="#FF69B4" stroke-width="2"/>
-            <ellipse cx="40" cy="12" rx="4" ry="12" fill="#FFB6C1" stroke="#FF69B4" stroke-width="2"/>
-            <!-- 兔子眼睛 -->
-            <circle cx="28" cy="18" r="3" fill="#000"/>
-            <circle cx="36" cy="18" r="3" fill="#000"/>
-            <!-- 兔子嘴巴 -->
-            <path d="M28 26 Q32 28 36 26" stroke="#FF69B4" stroke-width="2" fill="none"/>
-            <!-- 兔子尾巴 -->
-            <circle cx="48" cy="45" r="6" fill="#FFB6C1" stroke="#FF69B4" stroke-width="1"/>
-          </svg>
-        `),
-        iconMapping: {
-          marker: { x: 0, y: 0, width: 64, height: 64 }
-        },
-        getIcon: () => 'marker',
         getPosition: (d: any) => d.position,
-        getSize: (d: any) => d.size,
-        getColor: (d: any) => d.color,
-        billboard: false,
-        sizeScale: 1,
-        sizeUnits: 'pixels',
+        getRadius: (d: any) => d.size,
+        getFillColor: (d: any) => d.color,
+        radiusUnits: 'meters',
+        pickable: true,
+        stroked: true,
+        filled: true,
+        lineWidthMinPixels: 3,
+        getLineColor: [255, 140, 0, 255], // 深橘色邊框
+        updateTriggers: {
+          getPosition: [player.latitude, player.longitude]
+        }
+      }),
+
+      // 🐱 精美貓咪 3D OBJ 模型
+      new SimpleMeshLayer({
+        id: 'beautiful-cat-model',
+        data: catModelData,
+        mesh: '/models/12221_Cat_v1_l3.obj', // 使用你下載的真實貓咪模型
+        getPosition: (d: any) => d.position,
+        getScale: (d: any) => d.scale,
+        getOrientation: (d: any) => d.rotation,
+        getColor: [139, 69, 19, 255], // 咖啡色貓咪
+        pickable: true,
+        material: {
+          ambient: 1.0,  // 增強環境光
+          diffuse: 1.0,  // 增強漫射光
+          shininess: 32,
+          specularColor: [255, 255, 255]
+        },
         updateTriggers: {
           getPosition: [player.latitude, player.longitude]
         }
@@ -102,18 +137,26 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
     ];
   };
 
-  // 更新兔子圖層
-  const updateRabbitLayer = () => {
-    if (!overlay) return;
+  // 更新貓咪圖層
+  const updateCatLayer = () => {
+    if (!overlay) {
+      console.warn('⚠️ Overlay not available for cat layer update');
+      return;
+    }
 
-    const layers = createRabbitLayer();
+    const layers = createCatLayer();
     overlay.setProps({ layers });
 
-    console.log('🐰 Updated rabbit position on map:', playerPosition());
+    console.log('🐱 Updated cat position on map:', playerPosition());
+    console.log('🐱 Updated layers count:', layers.length);
   };
 
   onMount(() => {
     console.log('🗺️ Initializing DeckGL + MapLibre...');
+
+    // 註冊 OBJ 載入器載入精美貓咪模型
+    registerLoaders([OBJLoader]);
+    console.log('✅ OBJLoader registered for beautiful cat model');
 
     try {
       // 創建 MapLibre 地圖
@@ -121,7 +164,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         container: mapContainer,
         style: terrainMapStyle,
         center: [playerPosition().longitude, playerPosition().latitude],
-        zoom: 15,
+        zoom: 16,
         pitch: 30, // 30度傾斜角，提供3D視角
         bearing: 0
       });
@@ -130,13 +173,22 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         console.log('✅ MapLibre loaded successfully');
 
         // 創建 Deck.gl overlay
+        const initialLayers = createCatLayer();
         overlay = new MapboxOverlay({
-          layers: createRabbitLayer()
+          layers: initialLayers
         });
 
         map!.addControl(overlay as any);
         console.log('✅ Deck.gl overlay added');
-        console.log('🐰 Initial rabbit position:', playerPosition());
+        console.log('🐱 Initial cat position:', playerPosition());
+        console.log('🐱 Cat layers created:', initialLayers.length);
+
+        // 確保貓咪圖層立即可見
+        if (initialLayers.length > 0) {
+          console.log('✅ Cat layer is visible on map');
+        } else {
+          console.warn('⚠️ No cat layers created - check player data');
+        }
       });
 
       // 監聽地圖移動
@@ -171,7 +223,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
 
       {/* 簡潔的狀態面板 */}
       <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 z-10">
-        <div class="text-sm font-semibold text-gray-800 mb-2">🐰 兔子狀態</div>
+        <div class="text-sm font-semibold text-gray-800 mb-2">🐱 小貓咪狀態</div>
         <div class="text-xs text-gray-600 space-y-1">
           <div>緯度: {playerPosition().latitude.toFixed(4)}°</div>
           <div>經度: {playerPosition().longitude.toFixed(4)}°</div>
@@ -186,7 +238,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
       {/* 使用提示 */}
       <div class="absolute bottom-4 left-4 bg-blue-50/90 backdrop-blur-sm rounded-lg shadow-lg p-3 z-10">
         <div class="text-sm text-blue-800">
-          💬 對 AI 說：<strong>「移動兔子到台北101」</strong>
+          💬 對 AI 說：<strong>「移動小貓咪到台北101」</strong>
         </div>
       </div>
     </div>

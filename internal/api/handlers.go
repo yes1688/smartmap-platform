@@ -99,6 +99,7 @@ func (h *Handler) ChatWithAI(c *gin.Context) {
 		return
 	}
 
+
 	// First, check if this might be a movement command
 	if request.PlayerID != "" {
 		// Get client info for movement command processing
@@ -379,4 +380,84 @@ func (h *Handler) ChatWithMovement(c *gin.Context) {
 
 func (h *Handler) generateSessionID() string {
 	return fmt.Sprintf("session_%d", time.Now().UnixNano())
+}
+
+// Google Places Search Handler (secured with rate limiting)
+func (h *Handler) SearchPlace(c *gin.Context) {
+	var request struct {
+		Query string `json:"query" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Use the geocoding service which now has Google Places fallback
+	location, err := h.geo.GeocodeLocation(request.Query)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Location not found",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"name":      location.Name,
+			"latitude":  location.Latitude,
+			"longitude": location.Longitude,
+		},
+	})
+}
+
+// Debug Movement Handler for testing
+func (h *Handler) DebugMovement(c *gin.Context) {
+	var request struct {
+		PlayerID string `json:"playerId" binding:"required"`
+		Command  string `json:"command" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get player
+	player, err := h.game.GetPlayerStatus(request.PlayerID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Player not found"})
+		return
+	}
+
+	currentLocation := &geo.Location{
+		Latitude:  player.Latitude,
+		Longitude: player.Longitude,
+	}
+
+	// Try to directly test movement parsing
+	result, err := h.game.ProcessAIMovementCommand(
+		request.PlayerID,
+		request.Command,
+		"debug_session",
+		c.ClientIP(),
+	)
+
+	debugInfo := gin.H{
+		"input": gin.H{
+			"playerId": request.PlayerID,
+			"command":  request.Command,
+			"currentLocation": currentLocation,
+		},
+		"result": result,
+		"error":  nil,
+	}
+
+	if err != nil {
+		debugInfo["error"] = err.Error()
+	}
+
+	c.JSON(http.StatusOK, debugInfo)
 }
