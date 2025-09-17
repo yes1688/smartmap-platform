@@ -1,4 +1,4 @@
-import { Component, createSignal, onCleanup } from 'solid-js';
+import { Component, createSignal, onCleanup, onMount } from 'solid-js';
 import { gameStore, setCurrentPlayer } from '@/stores/gameStore';
 
 interface VoiceControlProps {
