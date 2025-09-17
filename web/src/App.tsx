@@ -4,7 +4,6 @@ import Header from '@/components/Header';
 import DeckGLMap from '@/components/DeckGLMap';
 import GamePanel from '@/components/GamePanel';
 import ChatPanel from '@/components/ChatPanel';
-import VoicePanel from '@/components/VoicePanel';
 import VoiceControl from '@/components/VoiceControl';
 import HistoricalSitePanel from '@/components/HistoricalSitePanel';
 import LoadingOverlay from '@/components/LoadingOverlay';
@@ -16,7 +15,6 @@ import '@/styles/animations.css';
 const App: Component = () => {
   // UI state management
   const [uiState, setUiState] = createStore<UIState>({
-    isVoicePanelOpen: false,
     isChatPanelOpen: false,
     isGamePanelExpanded: true,
     isSiteInfoPanelOpen: false,
@@ -45,9 +43,6 @@ const App: Component = () => {
   });
 
   // UI event handlers
-  const handleToggleVoicePanel = () => {
-    setUiState('isVoicePanelOpen', !uiState.isVoicePanelOpen);
-  };
 
   const handleToggleChatPanel = () => {
     setUiState('isChatPanelOpen', !uiState.isChatPanelOpen);
@@ -145,7 +140,6 @@ const App: Component = () => {
 
       {/* Header Navigation */}
       <Header
-        onToggleVoice={handleToggleVoicePanel}
         onToggleChat={handleToggleChatPanel}
       />
 
@@ -201,14 +195,6 @@ const App: Component = () => {
             </div>
           </Show>
 
-          {/* Voice Panel */}
-          <Show when={uiState.isVoicePanelOpen}>
-            <div class="pointer-events-auto">
-              <VoicePanel
-                onClose={() => setUiState('isVoicePanelOpen', false)}
-              />
-            </div>
-          </Show>
 
           {/* Historical Site Panel */}
           <Show when={uiState.isSiteInfoPanelOpen && uiState.currentHistoricalSite}>
@@ -243,22 +229,6 @@ const App: Component = () => {
             <span class="text-body-sm text-primary font-medium">系統運行中</span>
           </div>
           <div class="flex items-center space-x-2">
-            <button
-              onClick={handleToggleVoicePanel}
-              class="btn-ghost flex items-center space-x-1 px-2 py-1"
-            >
-              <div class="relative">
-                {/* 暈光背景 - 呼吸效果 */}
-                <div class="absolute inset-0 bg-red-500/20 rounded-full blur-sm animate-pulse"></div>
-                {/* 外層暈光 */}
-                <div class="absolute inset-0 bg-red-500/10 rounded-full blur-md animate-pulse" style="animation-delay: 0.5s;"></div>
-                {/* 麥克風圖示 */}
-                <svg class="w-4 h-4 text-red-500 relative z-10 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <span class="text-xs font-medium">AI</span>
-            </button>
             <button
               onClick={handleToggleChatPanel}
               class="btn-primary btn-icon"

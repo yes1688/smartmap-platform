@@ -412,33 +412,78 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
     }
   };
 
-  // 按住錄音，鬆開停止
-  const handleMouseDown = (e: MouseEvent) => {
+  // 統一的按壓和釋放處理（支援桌面和行動裝置）
+  const handlePressStart = (e: Event) => {
     e.preventDefault();
     console.log('🖱️ 按下按鈕，當前狀態 - 錄音:', isRecording(), '處理:', isProcessing());
+
     if (!isRecording() && !isProcessing()) {
       console.log('🎤 開始錄音流程...');
       startRecording();
-      // 添加全域監聽器確保捕獲鬆開事件
-      const handleGlobalMouseUp = () => {
-        console.log('🖱️ 全域鬆開事件，當前錄音狀態:', isRecording());
+
+      // 全域釋放事件監聽器
+      const handleGlobalRelease = (event: Event) => {
+        console.log('🖱️ 全域釋放事件，當前錄音狀態:', isRecording());
         if (isRecording()) {
           console.log('🛑 停止錄音流程...');
           stopRecording();
         }
-        document.removeEventListener('mouseup', handleGlobalMouseUp);
-        document.removeEventListener('touchend', handleGlobalMouseUp);
+        // 清理所有事件監聽器
+        document.removeEventListener('mouseup', handleGlobalRelease);
+        document.removeEventListener('touchend', handleGlobalRelease);
+        document.removeEventListener('touchcancel', handleGlobalRelease);
       };
-      document.addEventListener('mouseup', handleGlobalMouseUp);
-      document.addEventListener('touchend', handleGlobalMouseUp);
+
+      // 添加所有可能的釋放事件
+      document.addEventListener('mouseup', handleGlobalRelease);
+      document.addEventListener('touchend', handleGlobalRelease);
+      document.addEventListener('touchcancel', handleGlobalRelease); // 處理觸控取消
     }
   };
 
-  const handleMouseUp = () => {
-    if (isRecording()) {
+  // 觸控專用處理（防止滾動干擾）
+  const handleTouchStart = (e: TouchEvent) => {
+    e.preventDefault(); // 防止滾動
+    e.stopPropagation(); // 防止事件冒泡
+    handlePressStart(e);
+  };
+
+  // 滑鼠專用處理
+  const handleMouseDown = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handlePressStart(e);
+  };
+
+  // 鍵盤快捷鍵支援（空白鍵）
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.code === 'Space' && !e.repeat && !isRecording() && !isProcessing()) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('⌨️ 空白鍵按下，開始錄音');
+      handlePressStart(e);
+    }
+  };
+
+  const handleKeyUp = (e: KeyboardEvent) => {
+    if (e.code === 'Space' && isRecording()) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('⌨️ 空白鍵釋放，停止錄音');
       stopRecording();
     }
   };
+
+  // 全域鍵盤監聽
+  onMount(() => {
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener('keydown', handleKeyDown);
+    document.removeEventListener('keyup', handleKeyUp);
+  });
 
   // 清理資源
   onCleanup(() => {
@@ -448,28 +493,50 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
   });
 
   return (
-    <div class="fixed bottom-4 right-4 z-50">
+    <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
       {/* 語音按鈕 */}
-      <div class="flex flex-col items-center gap-2">
+      <div class="flex flex-col items-center gap-3">
 
-        {/* 主要錄音按鈕 */}
+        {/* 主要錄音按鈕 - 完整無障礙和行動裝置支援 */}
         <button
           onMouseDown={handleMouseDown}
-          onMouseUp={handleMouseUp}
-          onTouchStart={handleMouseDown}
-          onTouchEnd={handleMouseUp}
+          onTouchStart={handleTouchStart}
           disabled={isProcessing()}
+          tabIndex={0}
+          aria-label={
+            isRecording() ? '正在錄音，鬆開停止' :
+            isProcessing() ? 'AI 正在處理語音' :
+            '按住開始錄音，或按空白鍵'
+          }
+          aria-pressed={isRecording()}
+          aria-busy={isProcessing()}
+          role="button"
           class={`
-            w-16 h-16 rounded-full shadow-lg border-4 transition-all duration-200
-            flex items-center justify-center
+            w-20 h-20 rounded-full shadow-xl border-4 border-white/20 backdrop-blur-sm
+            transition-all duration-300 flex items-center justify-center
+            select-none touch-manipulation
             ${isRecording()
-              ? 'bg-red-500 border-red-300 scale-110 animate-pulse'
+              ? 'bg-gradient-to-br from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 scale-110 animate-pulse'
               : isProcessing()
-              ? 'bg-yellow-500 border-yellow-300'
-              : 'bg-blue-500 border-blue-300 hover:bg-blue-600 hover:scale-105'
+              ? 'bg-gradient-to-br from-yellow-500 to-orange-500 animate-spin'
+              : 'bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 hover:scale-105 active:scale-95'
             }
             ${isProcessing() ? 'cursor-wait' : 'cursor-pointer'}
+            focus:outline-none focus:ring-4 focus:ring-blue-300/50
+            /* 行動裝置觸控優化 */
+            lg:hover:scale-105
+            active:scale-95
+            touch-action-none
           `}
+          style={{
+            /* 防止選取和上下文選單 */
+            'user-select': 'none',
+            '-webkit-user-select': 'none',
+            '-webkit-touch-callout': 'none',
+            /* 確保觸控回應 */
+            'min-height': '80px',
+            'min-width': '80px'
+          }}
         >
           {isProcessing() ? (
             <div class="animate-spin w-6 h-6 border-2 border-white border-t-transparent rounded-full"></div>
@@ -480,44 +547,78 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
           )}
         </button>
 
-        {/* 狀態顯示 */}
-        <div class="text-center">
+        {/* 狀態顯示 - 優化視覺效果和無障礙 */}
+        <div
+          class="text-center px-4 py-2 bg-white/90 backdrop-blur-sm rounded-full shadow-lg"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {isRecording() && (
-            <div class="text-red-600 text-sm font-medium animate-pulse">
-              🔴 錄音中...
+            <div class="text-red-600 text-sm font-semibold animate-pulse flex items-center gap-2">
+              <div class="w-3 h-3 bg-red-500 rounded-full animate-pulse" aria-hidden="true"></div>
+              <span>錄音中...</span>
+              <span class="sr-only">正在錄製語音，請繼續說話</span>
             </div>
           )}
           {isProcessing() && (
-            <div class="text-yellow-600 text-sm font-medium">
-              ⚡ 處理中...
+            <div class="text-yellow-600 text-sm font-semibold flex items-center gap-2">
+              <div class="w-3 h-3 bg-yellow-500 rounded-full animate-bounce" aria-hidden="true"></div>
+              <span>AI 處理中...</span>
+              <span class="sr-only">人工智慧正在處理您的語音輸入</span>
             </div>
           )}
           {!isRecording() && !isProcessing() && (
-            <div class="text-gray-600 text-sm">
-              🎤 按住說話
+            <div class="text-gray-600 text-sm font-medium flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+              </svg>
+              <span>按住說話</span>
+              <span class="sr-only">按住按鈕或按空白鍵開始語音輸入</span>
             </div>
           )}
         </div>
 
-        {/* 最後轉錄結果 */}
+        {/* 快捷鍵提示 - 僅桌面顯示 */}
+        <div class="hidden lg:block text-center">
+          <div class="text-xs text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-lg px-3 py-1">
+            💡 按 <kbd class="bg-white px-2 py-1 rounded text-gray-700 font-mono text-xs shadow-sm">空白鍵</kbd> 快速錄音
+          </div>
+        </div>
+
+        {/* 最後轉錄結果 - 統一 ChatPanel 風格 */}
         {lastTranscription() && (
-          <div class="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs">
-            <div class="text-xs text-gray-500 mb-1">最後指令：</div>
-            <div class="text-sm text-gray-800">"{lastTranscription()}"</div>
+          <div class="relative bg-gradient-to-br from-white to-gray-50 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-gray-200/50">
+            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+              <span class="text-white text-xs">✅</span>
+            </div>
+            <div class="pt-2">
+              <div class="text-xs text-emerald-600 font-semibold mb-2">語音識別成功：</div>
+              <div class="text-sm text-gray-800 font-medium">"{lastTranscription()}"</div>
+            </div>
+            {/* Message tail */}
+            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-white to-gray-50 border-l border-b border-gray-200/50 transform rotate-45"></div>
           </div>
         )}
 
-        {/* 錯誤訊息 */}
+        {/* 錯誤訊息 - 統一 ChatPanel 風格 */}
         {error() && (
-          <div class="bg-red-50/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs">
-            <div class="text-xs text-red-500 mb-1">錯誤：</div>
-            <div class="text-sm text-red-700">{error()}</div>
-            <button
-              onClick={() => setError('')}
-              class="text-xs text-red-500 underline mt-1"
-            >
-              清除
-            </button>
+          <div class="relative bg-gradient-to-br from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-red-200/50">
+            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-sm">
+              <span class="text-white text-xs">❌</span>
+            </div>
+            <div class="pt-2">
+              <div class="text-xs text-red-600 font-semibold mb-2">語音處理錯誤：</div>
+              <div class="text-sm text-red-700 mb-3">{error()}</div>
+              <button
+                onClick={() => setError('')}
+                class="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                重試
+              </button>
+            </div>
+            {/* Message tail */}
+            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-l border-b border-red-200/50 transform rotate-45"></div>
           </div>
         )}
 

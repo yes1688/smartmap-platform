@@ -2,7 +2,6 @@ import { Component, createSignal } from 'solid-js';
 import { gameComputed } from '@/stores/gameStore';
 
 interface HeaderProps {
-  onToggleVoice: () => void;
   onToggleChat: () => void;
 }
 
@@ -55,27 +54,6 @@ const Header: Component<HeaderProps> = (props) => {
 
           {/* Actions */}
           <div class="flex items-center space-x-3">
-            {/* Voice Control */}
-            <button
-              onClick={props.onToggleVoice}
-              class="btn-ghost flex items-center space-x-2 px-3 py-2 group relative"
-              title="語音控制"
-            >
-              <div class="relative">
-                {/* 暈光背景 - 呼吸效果 */}
-                <div class="absolute inset-0 bg-red-500/20 rounded-full blur-sm animate-pulse"></div>
-                {/* 外層暈光 */}
-                <div class="absolute inset-0 bg-red-500/10 rounded-full blur-md animate-pulse" style="animation-delay: 0.5s;"></div>
-                {/* 麥克風圖示 */}
-                <svg class="w-5 h-5 text-red-500 relative z-10 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                </svg>
-              </div>
-              <span class="text-sm font-medium text-secondary group-hover:text-primary">AI</span>
-              <div class="absolute -inset-2 rounded-lg bg-neutral-100 opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
-            </button>
-
             {/* AI Chat */}
             <button
               onClick={props.onToggleChat}

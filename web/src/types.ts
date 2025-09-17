@@ -178,7 +178,6 @@ export interface GeoFeature {
 
 // UI State types
 export interface UIState {
-  isVoicePanelOpen: boolean;
   isChatPanelOpen: boolean;
   isGamePanelExpanded: boolean;
   isSiteInfoPanelOpen: boolean;
