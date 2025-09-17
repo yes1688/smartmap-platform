@@ -3,8 +3,10 @@ import { createStore } from 'solid-js/store';
 import Header from '@/components/Header';
 import DeckGLMap from '@/components/DeckGLMap';
 import GamePanel from '@/components/GamePanel';
-import ChatPanel from '@/components/ChatPanel';
-import VoiceControl from '@/components/VoiceControl';
+import SmartVoiceOrb from '@/components/SmartVoiceOrb';
+import SmartBottomToolbar from '@/components/SmartBottomToolbar';
+import SmartSearch from '@/components/SmartSearch';
+import SmartContextPanel from '@/components/SmartContextPanel';
 import HistoricalSitePanel from '@/components/HistoricalSitePanel';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { WelcomeModal } from '@/components/WelcomeModal';
@@ -13,14 +15,22 @@ import type { UIState, HistoricalSite } from '@/types';
 import '@/styles/animations.css';
 
 const App: Component = () => {
-  // UI state management
+  // UI state management - 革命性重構
   const [uiState, setUiState] = createStore<UIState>({
-    isChatPanelOpen: false,
+    isChatPanelOpen: false, // 暫時保留舊組件
     isGamePanelExpanded: true,
     isSiteInfoPanelOpen: false,
     isLoading: true,
     currentHistoricalSite: undefined,
   });
+
+  // 新智能界面狀態
+  const [isSearchOpen, setIsSearchOpen] = createSignal(false);
+  const [contextPanel, setContextPanel] = createSignal<{
+    isVisible: boolean;
+    location?: any;
+    position: { x: number; y: number };
+  }>({ isVisible: false, position: { x: 0, y: 0 } });
 
   const [userId] = createSignal(generateUserId());
 
@@ -42,7 +52,7 @@ const App: Component = () => {
     }
   });
 
-  // UI event handlers
+  // UI event handlers - 新智能界面
 
   const handleToggleChatPanel = () => {
     setUiState('isChatPanelOpen', !uiState.isChatPanelOpen);
@@ -51,6 +61,84 @@ const App: Component = () => {
   const handleToggleGamePanel = () => {
     setUiState('isGamePanelExpanded', !uiState.isGamePanelExpanded);
   };
+
+  // 智能搜索處理
+  const handleShowSearch = () => {
+    setIsSearchOpen(true);
+  };
+
+  const handleCloseSearch = () => {
+    setIsSearchOpen(false);
+  };
+
+  // 快速移動處理
+  const handleQuickMove = async (location: string) => {
+    console.log(`🚀 快速移動到: ${location}`);
+    // 這裡會調用 AI 移動 API
+    try {
+      const response = await fetch('http://localhost:8081/api/v1/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: userId(),
+          message: `移動小貓咪到${location}`,
+          context: '智慧空間快速移動'
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.type === 'movement' && data.data?.success && data.data.newPosition) {
+          gameActions.setPlayerPosition(
+            data.data.newPosition.latitude,
+            data.data.newPosition.longitude
+          );
+          console.log(`✅ 成功移動到 ${location}`);
+        }
+      }
+    } catch (error) {
+      console.error('快速移動失敗:', error);
+    }
+  };
+
+  // 上下文面板處理
+  const handleMapClick = (event: any) => {
+    // 可以在這裡處理地圖點擊，顯示上下文面板
+    const { x, y } = event;
+    setContextPanel({
+      isVisible: true,
+      location: {
+        name: '點擊位置',
+        type: 'location',
+        description: '這是一個地圖位置點'
+      },
+      position: { x, y }
+    });
+  };
+
+  const handleCloseContextPanel = () => {
+    setContextPanel(prev => ({ ...prev, isVisible: false }));
+  };
+
+  // 快捷鍵支持
+  onMount(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K 或 Ctrl+K 開啟搜索
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+
+      // ESC 關閉所有面板
+      if (e.key === 'Escape') {
+        setIsSearchOpen(false);
+        setContextPanel(prev => ({ ...prev, isVisible: false }));
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  });
 
   const handleShowHistoricalSite = (site: HistoricalSite) => {
     setUiState('currentHistoricalSite', site);
@@ -165,9 +253,11 @@ const App: Component = () => {
               />
             </div> */}
 
-            {/* 語音控制組件 */}
+            {/* 🚀 新智能界面系統 - 革命性重構 */}
+
+            {/* 智能語音球 - 替代舊語音控制 */}
             <div class="pointer-events-auto">
-              <VoiceControl onVoiceCommand={handleVoiceCommand} />
+              <SmartVoiceOrb onMovementResponse={(data) => console.log('語音移動完成:', data)} />
             </div>
 
             {/* Floating Action Button (Mobile) */}
@@ -184,17 +274,39 @@ const App: Component = () => {
           </div>
         </div>
 
-        {/* Modal Panels */}
+        {/* 智能底部工具列 - 新核心導航 */}
+        <SmartBottomToolbar
+          onQuickMove={handleQuickMove}
+          onShowSearch={handleShowSearch}
+        />
+
+        {/* 智能搜索界面 */}
+        <SmartSearch
+          isOpen={isSearchOpen()}
+          onClose={handleCloseSearch}
+          onQuickMove={handleQuickMove}
+        />
+
+        {/* 智能上下文面板 */}
+        <SmartContextPanel
+          isVisible={contextPanel().isVisible}
+          location={contextPanel().location}
+          position={contextPanel().position}
+          onClose={handleCloseContextPanel}
+          onMoveTo={handleQuickMove}
+          onGetInfo={(location) => console.log('獲取信息:', location)}
+        />
+
+        {/* Modal Panels - 保留舊組件作為備用 */}
         <div class="fixed inset-0 pointer-events-none z-50">
-          {/* Chat Panel */}
-          <Show when={uiState.isChatPanelOpen}>
+          {/* Chat Panel - 暫時隱藏，已被新智能系統替代 */}
+          <Show when={false && uiState.isChatPanelOpen}>
             <div class="pointer-events-auto">
-              <ChatPanel
+              {/* <ChatPanel
                 onClose={() => setUiState('isChatPanelOpen', false)}
-              />
+              /> */}
             </div>
           </Show>
-
 
           {/* Historical Site Panel */}
           <Show when={uiState.isSiteInfoPanelOpen && uiState.currentHistoricalSite}>

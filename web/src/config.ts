@@ -13,7 +13,8 @@ export const CONFIG = {
       movementStats: '/ai/movement-stats',
       gameStatus: '/game/status',
       gameCollect: '/game/collect',
-      gameMove: '/game/move'
+      gameMove: '/game/move',
+      searchPlace: '/ai/places/search'
     }
   },
 
