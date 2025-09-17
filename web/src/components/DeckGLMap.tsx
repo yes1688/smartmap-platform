@@ -33,7 +33,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}'
         ],
         tileSize: 256,
-        attribution: 'Tiles © Esri — Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+        attribution: '© Esri'  // 簡化版權信息
       }
     },
     layers: [{
@@ -166,7 +166,8 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         center: [playerPosition().longitude, playerPosition().latitude],
         zoom: 16,
         pitch: 30, // 30度傾斜角，提供3D視角
-        bearing: 0
+        bearing: 0,
+        attributionControl: false  // 關閉預設版權控制元件
       });
 
       map.on('load', () => {
@@ -179,6 +180,13 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         });
 
         map!.addControl(overlay as any);
+
+        // 添加簡潔的版權控制元件
+        map!.addControl(new maplibregl.AttributionControl({
+          compact: true,  // 使用緊湊模式
+          customAttribution: '© Esri'  // 自定義簡短版權
+        }), 'bottom-right');
+
         console.log('✅ Deck.gl overlay added');
         console.log('🐱 Initial cat position:', playerPosition());
         console.log('🐱 Cat layers created:', initialLayers.length);
