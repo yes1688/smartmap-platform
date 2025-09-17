@@ -494,7 +494,54 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
 
   return (
     <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-      {/* 語音按鈕 */}
+      {/* 訊息區域 - 固定在按鈕上方，不影響按鈕位置 */}
+      <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4 flex flex-col items-center gap-3">
+
+        {/* 最後轉錄結果 - 統一 ChatPanel 風格 */}
+        {lastTranscription() && (
+          <div class="relative bg-gradient-to-br from-white to-gray-50 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-gray-200/50 animate-fadeIn">
+            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
+              <span class="text-white text-xs">✅</span>
+            </div>
+            <div class="pt-2">
+              <div class="text-xs text-emerald-600 font-semibold mb-2">語音識別成功：</div>
+              <div class="text-sm text-gray-800 font-medium">"{lastTranscription()}"</div>
+            </div>
+            {/* Message tail */}
+            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-white to-gray-50 border-l border-b border-gray-200/50 transform rotate-45"></div>
+          </div>
+        )}
+
+        {/* 錯誤訊息 - 統一 ChatPanel 風格 */}
+        {error() && (
+          <div class="relative bg-gradient-to-br from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-red-200/50 animate-fadeIn">
+            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-sm">
+              <span class="text-white text-xs">❌</span>
+            </div>
+            <div class="pt-2">
+              <div class="text-xs text-red-600 font-semibold mb-2">語音處理錯誤：</div>
+              <div class="text-sm text-red-700 mb-3">{error()}</div>
+              <button
+                onClick={() => setError('')}
+                class="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                重試
+              </button>
+            </div>
+            {/* Message tail */}
+            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-l border-b border-red-200/50 transform rotate-45"></div>
+          </div>
+        )}
+
+        {/* 快捷鍵提示 - 僅桌面顯示 */}
+        <div class="hidden lg:block text-center">
+          <div class="text-xs text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-lg px-3 py-1">
+            💡 按 <kbd class="bg-white px-2 py-1 rounded text-gray-700 font-mono text-xs shadow-sm">空白鍵</kbd> 快速錄音
+          </div>
+        </div>
+      </div>
+
+      {/* 主要按鈕區域 - 固定位置 */}
       <div class="flex flex-col items-center gap-3">
 
         {/* 主要錄音按鈕 - 完整無障礙和行動裝置支援 */}
@@ -571,56 +618,13 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
           {!isRecording() && !isProcessing() && (
             <div class="text-gray-600 text-sm font-medium flex items-center gap-2">
               <svg class="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
+                <path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 715 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clip-rule="evenodd"></path>
               </svg>
               <span>按住說話</span>
               <span class="sr-only">按住按鈕或按空白鍵開始語音輸入</span>
             </div>
           )}
         </div>
-
-        {/* 快捷鍵提示 - 僅桌面顯示 */}
-        <div class="hidden lg:block text-center">
-          <div class="text-xs text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-lg px-3 py-1">
-            💡 按 <kbd class="bg-white px-2 py-1 rounded text-gray-700 font-mono text-xs shadow-sm">空白鍵</kbd> 快速錄音
-          </div>
-        </div>
-
-        {/* 最後轉錄結果 - 統一 ChatPanel 風格 */}
-        {lastTranscription() && (
-          <div class="relative bg-gradient-to-br from-white to-gray-50 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-gray-200/50">
-            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
-              <span class="text-white text-xs">✅</span>
-            </div>
-            <div class="pt-2">
-              <div class="text-xs text-emerald-600 font-semibold mb-2">語音識別成功：</div>
-              <div class="text-sm text-gray-800 font-medium">"{lastTranscription()}"</div>
-            </div>
-            {/* Message tail */}
-            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-white to-gray-50 border-l border-b border-gray-200/50 transform rotate-45"></div>
-          </div>
-        )}
-
-        {/* 錯誤訊息 - 統一 ChatPanel 風格 */}
-        {error() && (
-          <div class="relative bg-gradient-to-br from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-red-200/50">
-            <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-sm">
-              <span class="text-white text-xs">❌</span>
-            </div>
-            <div class="pt-2">
-              <div class="text-xs text-red-600 font-semibold mb-2">語音處理錯誤：</div>
-              <div class="text-sm text-red-700 mb-3">{error()}</div>
-              <button
-                onClick={() => setError('')}
-                class="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                重試
-              </button>
-            </div>
-            {/* Message tail */}
-            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-l border-b border-red-200/50 transform rotate-45"></div>
-          </div>
-        )}
 
       </div>
     </div>
