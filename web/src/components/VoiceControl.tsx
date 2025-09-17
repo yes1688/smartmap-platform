@@ -494,49 +494,54 @@ const VoiceControl: Component<VoiceControlProps> = (props) => {
 
   return (
     <div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-      {/* 訊息區域 - 固定在按鈕上方，不影響按鈕位置 */}
-      <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4 flex flex-col items-center gap-3">
+      {/* 訊息區域 - 固定在按鈕上方，使用更大空間 */}
+      <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4 flex flex-col items-center gap-3 w-screen max-w-lg px-4">
 
-        {/* 最後轉錄結果 - 統一 ChatPanel 風格 */}
+        {/* 最後轉錄結果 - 優化寬度和布局 */}
         {lastTranscription() && (
-          <div class="relative bg-gradient-to-br from-white to-gray-50 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-gray-200/50 animate-fadeIn">
+          <div class="relative bg-gradient-to-br from-white to-gray-50 backdrop-blur-sm rounded-2xl shadow-xl p-4 w-full border border-gray-200/50 animate-fadeIn">
             <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center shadow-sm">
               <span class="text-white text-xs">✅</span>
             </div>
             <div class="pt-2">
               <div class="text-xs text-emerald-600 font-semibold mb-2">語音識別成功：</div>
-              <div class="text-sm text-gray-800 font-medium">"{lastTranscription()}"</div>
+              <div class="text-sm text-gray-800 font-medium leading-relaxed break-words">"{lastTranscription()}"</div>
             </div>
-            {/* Message tail */}
-            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-white to-gray-50 border-l border-b border-gray-200/50 transform rotate-45"></div>
+            {/* Message tail - 指向中央按鈕 */}
+            <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-white to-gray-50 border-r border-b border-gray-200/50 rotate-45"></div>
           </div>
         )}
 
-        {/* 錯誤訊息 - 統一 ChatPanel 風格 */}
+        {/* 錯誤訊息 - 優化寬度和布局 */}
         {error() && (
-          <div class="relative bg-gradient-to-br from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-xl p-4 max-w-xs border border-red-200/50 animate-fadeIn">
+          <div class="relative bg-gradient-to-br from-red-50 to-red-100 backdrop-blur-sm rounded-2xl shadow-xl p-4 w-full border border-red-200/50 animate-fadeIn">
             <div class="absolute -top-2 left-4 w-6 h-6 bg-gradient-to-br from-red-400 to-red-500 rounded-full flex items-center justify-center shadow-sm">
               <span class="text-white text-xs">❌</span>
             </div>
             <div class="pt-2">
               <div class="text-xs text-red-600 font-semibold mb-2">語音處理錯誤：</div>
-              <div class="text-sm text-red-700 mb-3">{error()}</div>
-              <button
-                onClick={() => setError('')}
-                class="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-xs font-medium rounded-full transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                重試
-              </button>
+              <div class="text-sm text-red-700 mb-3 leading-relaxed break-words">{error()}</div>
+              <div class="flex justify-end">
+                <button
+                  onClick={() => setError('')}
+                  class="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white text-sm font-medium rounded-full transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm"
+                >
+                  重試
+                </button>
+              </div>
             </div>
-            {/* Message tail */}
-            <div class="absolute bottom-2 left-2 w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-l border-b border-red-200/50 transform rotate-45"></div>
+            {/* Message tail - 指向中央按鈕 */}
+            <div class="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-gradient-to-br from-red-50 to-red-100 border-r border-b border-red-200/50 rotate-45"></div>
           </div>
         )}
 
-        {/* 快捷鍵提示 - 僅桌面顯示 */}
+        {/* 快捷鍵提示 - 僅桌面顯示，更簡潔 */}
         <div class="hidden lg:block text-center">
-          <div class="text-xs text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-lg px-3 py-1">
-            💡 按 <kbd class="bg-white px-2 py-1 rounded text-gray-700 font-mono text-xs shadow-sm">空白鍵</kbd> 快速錄音
+          <div class="text-xs text-gray-500 bg-gray-100/80 backdrop-blur-sm rounded-lg px-3 py-1 inline-flex items-center gap-2">
+            <span>💡</span>
+            <span>按</span>
+            <kbd class="bg-white px-2 py-1 rounded text-gray-700 font-mono text-xs shadow-sm">空白鍵</kbd>
+            <span>快速錄音</span>
           </div>
         </div>
       </div>
