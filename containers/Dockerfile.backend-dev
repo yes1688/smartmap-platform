@@ -4,17 +4,19 @@ FROM golang:1.23-alpine AS dev
 # 安裝開發工具
 RUN apk add --no-cache git ca-certificates tzdata curl postgresql-client
 
-# 安裝 Air (Go 熱重載工具)
-RUN go install github.com/cosmtrek/air@latest
+# 安裝 Air (Go 熱重載工具) - 使用穩定版本，跳過版本問題
+RUN apk add --no-cache bash && \
+    wget -O- -nv https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh -s -- -b /usr/local/bin
 
 # 設置工作目錄
 WORKDIR /app
 
-# 複製 go.mod 和相關依賴文件
-COPY go.mod go.sum ./
+# 複製 go.mod 和 go.sum 文件
+COPY go.mod ./
+COPY go.sum ./
 
-# 下載依賴
-RUN go mod download
+# 下載依賴並確保 go.sum 正確
+RUN go mod download && go mod tidy
 
 # 複製源代碼 (開發時會透過 volume 掛載覆蓋)
 COPY cmd/ ./cmd/
