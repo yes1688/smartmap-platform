@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with PostGIS extension
+  postgres:
+    image: docker.io/postgis/postgis:15-3.3
+    container_name: spatial-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    # ports:
+      # - "${DB_PORT}:5432"  # 內部隔離，不對外暴露
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spatial-network
+
+  # Note: Ollama runs on host machine, not containerized
+
+  # Main Go application
+  app:
+    build:
+      context: .
+      dockerfile: containers/Containerfile
+      args:
+        - BUILD_ENV=${BUILD_ENV:-production}
+    container_name: spatial-app
+    environment:
+      - GIN_MODE=${GIN_MODE}
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - OLLAMA_URL=http://host.containers.internal:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - PORT=${APP_PORT}
+      - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+    # ports:
+      # - "${APP_PORT}:${APP_PORT}"  # 內部隔離，僅透過 nginx 訪問
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT}/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - spatial-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: docker.io/nginx:alpine
+    container_name: spatial-nginx
+    ports:
+      - "${NGINX_PORT}:80"
+    volumes:
+      - ./containers/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web/dist:/usr/share/nginx/html:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - spatial-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  spatial-network:
+    driver: bridge

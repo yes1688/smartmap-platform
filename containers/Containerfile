@@ -1,0 +1,104 @@
+# Multi-stage build for Go application and SolidJS frontend
+
+# Frontend build stage
+FROM docker.io/node:20-alpine AS frontend-builder
+
+# Set working directory
+WORKDIR /frontend
+
+# Copy frontend package files
+COPY web/package.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy frontend source
+COPY web/ ./
+
+# Build frontend
+RUN npm run build
+
+# Backend build stage
+FROM docker.io/golang:1.23-alpine AS backend-builder
+
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates tzdata
+
+# Set working directory
+WORKDIR /build
+
+# Copy go mod file first
+COPY go.mod ./
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY configs/ ./configs/
+
+# Download dependencies first
+RUN go mod download
+
+# Download and tidy dependencies after copying source
+RUN go mod tidy
+
+# Build arguments
+ARG BUILD_ENV=production
+ARG VERSION=latest
+ARG BUILD_TIME
+
+# Set build environment variables
+ENV CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
+
+# Build the application
+RUN go build \
+    -ldflags="-w -s -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME} -X main.BuildEnv=${BUILD_ENV}" \
+    -o spatial-app \
+    ./cmd/server
+
+# Runtime stage
+FROM docker.io/alpine:latest
+
+# Install runtime dependencies
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    curl \
+    postgresql-client \
+    && addgroup -g 1001 -S appgroup \
+    && adduser -u 1001 -S appuser -G appgroup
+
+# Set timezone
+ENV TZ=Asia/Taipei
+
+# Create necessary directories
+RUN mkdir -p /app/web /app/configs
+
+# Copy binary from backend builder stage
+COPY --from=backend-builder /build/spatial-app /app/
+COPY --from=backend-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy frontend build from frontend builder stage
+COPY --from=frontend-builder /frontend/dist /app/web
+
+# Copy startup script
+COPY containers/start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Change ownership
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
+
+# Set working directory
+WORKDIR /app
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Start the application
+CMD ["./start.sh"]

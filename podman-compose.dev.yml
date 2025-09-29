@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 前端開發服務器 - 固定端口 3000
+  frontend-dev:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    container_name: spatial-frontend-dev
+    ports:
+      - "${FRONTEND_DEV_PORT:-3002}:3000"
+    volumes:
+      # 掛載源代碼支持熱重載
+      - ./web/src:/app/src:ro
+      - ./web/public:/app/public:ro
+      - ./web/index.html:/app/index.html:ro
+      - ./web/vite.config.ts:/app/vite.config.ts:ro
+      - ./web/tsconfig.json:/app/tsconfig.json:ro
+      - ./web/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./web/postcss.config.js:/app/postcss.config.js:ro
+      # 排除 node_modules 避免衝突
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - VITE_API_BASE_URL=http://localhost:8081/api/v1
+      - VITE_WS_URL=ws://localhost:8081/ws
+      - VITE_SPEECH_EAR_URL=http://localhost:3001  # Speech Ear API - browser access
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
