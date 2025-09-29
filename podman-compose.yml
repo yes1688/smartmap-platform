@@ -13,8 +13,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "${DB_PORT}:5432"
+    # ports:
+      # - "${DB_PORT}:5432"  # 內部隔離，不對外暴露
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
@@ -45,8 +45,8 @@ services:
       - PORT=${APP_PORT}
       - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
+    # ports:
+      # - "${APP_PORT}:${APP_PORT}"  # 內部隔離，僅透過 nginx 訪問
     depends_on:
       postgres:
         condition: service_healthy

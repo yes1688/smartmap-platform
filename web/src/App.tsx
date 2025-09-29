@@ -1,18 +1,27 @@
-import { Component, onMount, createSignal, Show } from 'solid-js';
+import { Component, onMount, createSignal, Show, onCleanup } from 'solid-js';
 import { createStore } from 'solid-js/store';
 import Header from '@/components/Header';
 import DeckGLMap from '@/components/DeckGLMap';
 import GamePanel from '@/components/GamePanel';
 import SmartVoiceOrb from '@/components/SmartVoiceOrb';
-import SmartBottomToolbar from '@/components/SmartBottomToolbar';
+import SpeechEarVoiceOrb from '@/components/SpeechEarVoiceOrb';
 import SmartSearch from '@/components/SmartSearch';
 import SmartContextPanel from '@/components/SmartContextPanel';
+import OneIntelligenceSystem from '@/components/OneIntelligenceSystem';
 import HistoricalSitePanel from '@/components/HistoricalSitePanel';
 import LoadingOverlay from '@/components/LoadingOverlay';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { gameActions } from '@/stores/gameStore';
 import type { UIState, HistoricalSite } from '@/types';
 import '@/styles/animations.css';
+
+// 智能引擎導入
+import { predictionEngine } from '@/services/PredictionEngine';
+import { GestureEngine, GestureType } from '@/services/GestureEngine';
+import { createPersonalizationEngine } from '@/services/PersonalizationEngine';
+import { animationEngine, fadeIn, slideIn } from '@/services/AnimationEngine';
+import { performanceEngine } from '@/services/PerformanceEngine';
+import { systemMonitor } from '@/utils/IntelligentSystemMonitor';
 
 const App: Component = () => {
   // UI state management - 革命性重構
@@ -31,18 +40,31 @@ const App: Component = () => {
     location?: any;
     position: { x: number; y: number };
   }>({ isVisible: false, position: { x: 0, y: 0 } });
+  // ONE Intelligence System 狀態
+  const [oneSystemEnabled, setOneSystemEnabled] = createSignal(true);
 
   const [userId] = createSignal(generateUserId());
+
+  // 語音系統選擇狀態
+  const [voiceSystem, setVoiceSystem] = createSignal<'chrome' | 'speechear'>('speechear'); // 預設使用您的 Speech Ear 系統
 
   // 歡迎彈窗狀態
   const [showWelcomeModal, setShowWelcomeModal] = createSignal(false);
 
+  // 智能引擎實例
+  let gestureEngine: GestureEngine | null = null;
+  let personalizationEngine: any = null;
+
   onMount(async () => {
     // 每次頁面載入都顯示歡迎彈窗
     setShowWelcomeModal(true);
+
     try {
       // Initialize the game system
       await gameActions.initializeGame(userId());
+
+      // 🧠 初始化智能引擎系統
+      await initializeIntelligentSystems();
 
       setUiState('isLoading', false);
       console.log('🚀 Intelligent Spatial Platform initialized successfully');
@@ -52,10 +74,80 @@ const App: Component = () => {
     }
   });
 
+  // 智能系統初始化
+  const initializeIntelligentSystems = async () => {
+    try {
+      // 啟動性能監控
+      performanceEngine.startMonitoring();
+
+      // 初始化手勢引擎
+      const mapContainer = document.getElementById('map-container');
+      if (mapContainer) {
+        gestureEngine = new GestureEngine(mapContainer);
+
+        // 註冊自定義手勢事件
+        window.addEventListener('gesture:quickMove', handleGestureQuickMove);
+        window.addEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
+        window.addEventListener('gesture:showNearby', handleShowSearch);
+        window.addEventListener('gesture:hideUI', () => {
+          setIsSearchOpen(false);
+          setOneSystemEnabled(false);
+          setContextPanel(prev => ({ ...prev, isVisible: false }));
+        });
+      }
+
+      // 初始化個性化引擎
+      personalizationEngine = createPersonalizationEngine(userId());
+
+      // 開始預測引擎的上下文適應
+      predictionEngine.preloadRelevantData();
+
+      // 啟用智能動畫效果
+      const appElement = document.querySelector('.min-h-screen');
+      if (appElement) {
+        await fadeIn(appElement as HTMLElement);
+      }
+
+      // 啟動系統全面監控
+      systemMonitor.startComprehensiveMonitoring();
+
+      // 輸出初始系統診斷報告
+      setTimeout(() => {
+        console.log('📊 初始系統診斷報告:\n' + systemMonitor.generateDiagnosticReport());
+      }, 5000);
+
+      console.log('🧠 所有智能系統初始化完成');
+    } catch (error) {
+      console.error('智能系統初始化失敗:', error);
+    }
+  };
+
+  // 清理智能系統
+  onCleanup(() => {
+    if (gestureEngine) {
+      gestureEngine.destroy();
+    }
+    performanceEngine.stopMonitoring();
+    animationEngine.destroy();
+    systemMonitor.destroy();
+
+    window.removeEventListener('gesture:quickMove', handleGestureQuickMove);
+    window.removeEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
+    window.removeEventListener('gesture:showNearby', handleShowSearch);
+    window.removeEventListener('gesture:hideUI', () => {});
+
+    console.log('🧹 所有智能系統已清理完成');
+  });
+
   // UI event handlers - 新智能界面
 
   const handleToggleChatPanel = () => {
     setUiState('isChatPanelOpen', !uiState.isChatPanelOpen);
+  };
+
+  // Header AI 助手按鈕觸發 ONE 系統
+  const handleToggleOneSystem = () => {
+    setOneSystemEnabled(!oneSystemEnabled());
   };
 
   const handleToggleGamePanel = () => {
@@ -158,11 +250,34 @@ const App: Component = () => {
     setShowWelcomeModal(false);
   };
 
+  // 手勢快速移動處理
+  const handleGestureQuickMove = (event: CustomEvent) => {
+    const { position } = event.detail;
+    console.log('🤲 手勢快速移動:', position);
+    // 這裡可以實現基於手勢位置的智能移動
+  };
+
+  // ONE 系統與聊天面板同步
+  const handleOneSystemChatSync = (message: string) => {
+    console.log('💬 ONE 系統同步到聊天:', message);
+    // 這裡可以將 ONE 系統的建議同步到聊天面板
+    // 如果需要的話，可以觸發聊天面板的輸入
+  };
+
+  // ONE 系統觸發語音
+  const handleOneSystemVoiceTrigger = () => {
+    console.log('🎤 ONE 系統觸發語音輸入');
+    // 這裡可以觸發語音球的錄音功能
+  };
+
   // 處理語音指令
   const handleVoiceCommand = async (text: string) => {
     console.log('🎤 收到語音指令:', text);
 
     try {
+      // 記錄到預測引擎
+      predictionEngine.recordInteraction('voice_command', { command: text });
+
       // 傳送語音指令到 AI 聊天 API
       const response = await fetch('http://localhost:8081/api/v1/ai/chat', {
         method: 'POST',
@@ -186,6 +301,17 @@ const App: Component = () => {
       // 如果是移動指令，更新前端 gameStore
       if (result.type === 'movement' && result.data?.success) {
         console.log('🐰 兔子移動成功:', result.data.newPosition);
+
+        // 記錄移動到個性化引擎
+        if (personalizationEngine) {
+          personalizationEngine.recordVisit(
+            result.data.location || '未知位置',
+            result.data.category || 'movement',
+            5000, // 假設停留5秒
+            1 // 成功移動給予正面評分
+          );
+        }
+
         // 更新前端 gameStore，觸發地圖更新
         if (result.data.newPosition?.latitude && result.data.newPosition?.longitude) {
           await gameActions.updatePlayerPosition(
@@ -228,7 +354,7 @@ const App: Component = () => {
 
       {/* Header Navigation */}
       <Header
-        onToggleChat={handleToggleChatPanel}
+        onToggleChat={handleToggleOneSystem}
       />
 
       {/* Main Application Container */}
@@ -236,7 +362,7 @@ const App: Component = () => {
         {/* Primary Content Area */}
         <div class="relative w-full h-full" style="height: 100%;">
           {/* Map Interface */}
-          <div class="absolute inset-0 w-full h-full" style="height: 100%;">
+          <div id="map-container" class="absolute inset-0 w-full h-full" style="height: 100%;">
             <DeckGLMap
               onPlayerMove={handlePlayerMove}
               onHistoricalSiteClick={handleShowHistoricalSite}
@@ -255,9 +381,26 @@ const App: Component = () => {
 
             {/* 🚀 新智能界面系統 - 革命性重構 */}
 
-            {/* 智能語音球 - 替代舊語音控制 */}
+            {/* 智能語音球 - 雙系統支援 */}
             <div class="pointer-events-auto">
-              <SmartVoiceOrb onMovementResponse={(data) => console.log('語音移動完成:', data)} />
+              <Show when={voiceSystem() === 'chrome'}>
+                <SmartVoiceOrb onMovementResponse={(data) => console.log('Chrome 語音移動完成:', data)} />
+              </Show>
+              <Show when={voiceSystem() === 'speechear'}>
+                <SpeechEarVoiceOrb onMovementResponse={(data) => console.log('Speech Ear 語音移動完成:', data)} />
+              </Show>
+            </div>
+
+            {/* 🚀 ONE Intelligence System - 革命性中央智能球 */}
+            <div class="pointer-events-auto">
+              <Show when={oneSystemEnabled()}>
+                <OneIntelligenceSystem
+                  onQuickMove={handleQuickMove}
+                  onShowSearch={handleShowSearch}
+                  onSyncWithChat={handleOneSystemChatSync}
+                  onTriggerVoice={handleOneSystemVoiceTrigger}
+                />
+              </Show>
             </div>
 
             {/* Floating Action Button (Mobile) */}
@@ -274,11 +417,7 @@ const App: Component = () => {
           </div>
         </div>
 
-        {/* 智能底部工具列 - 新核心導航 */}
-        <SmartBottomToolbar
-          onQuickMove={handleQuickMove}
-          onShowSearch={handleShowSearch}
-        />
+        {/* 🗑️ SmartBottomToolbar 已被 ONE Intelligence System 替代 */}
 
         {/* 智能搜索界面 */}
         <SmartSearch

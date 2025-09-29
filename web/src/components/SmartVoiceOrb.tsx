@@ -1,6 +1,8 @@
 import { Component, createSignal, onMount, onCleanup } from 'solid-js';
 import { CONFIG } from '@/config';
-import { gameStore } from '@/stores/gameStore';
+import { gameStore, gameActions } from '@/stores/gameStore';
+import { startDeepAnalysis, BrowserCapabilityAnalyzer } from '@/utils/SpeechAnalyzer';
+import { startUltimateAnalysis } from '@/utils/DeepNetworkAnalyzer';
 
 interface SmartVoiceOrbProps {
   onMovementResponse?: (result: any) => void;
@@ -11,25 +13,56 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   const [isProcessing, setIsProcessing] = createSignal(false);
   const [previewText, setPreviewText] = createSignal('');
   const [isActive, setIsActive] = createSignal(false);
+  const [interimText, setInterimText] = createSignal('');
 
   let mediaRecorder: MediaRecorder | null = null;
   let recognition: any = null;
   let chunks: Blob[] = [];
+  let deepAnalysis: any = null;
+  let ultimateAnalyzer: any = null;
 
   // 語音識別設置
   onMount(() => {
+    console.log('🚀 SmartVoiceOrb 初始化...');
+
+    // 🔬 深度分析瀏覽器能力
+    console.log('🔍 ===== 深度技術分析開始 =====');
+    const capabilities = BrowserCapabilityAnalyzer.analyze();
+    const speechProvider = BrowserCapabilityAnalyzer.detectSpeechProvider();
+    console.log(`🎯 語音服務提供商: ${speechProvider}`);
+
+    // 啟動深度分析
+    deepAnalysis = startDeepAnalysis();
+    console.log('🕵️ 網路請求監控已啟動，將捕捉所有隱藏的 API 調用');
+
+    // 🚀 啟動終極網路分析器
+    console.log('🔬 ===== 啟動終極深度分析 =====');
+    ultimateAnalyzer = startUltimateAnalysis();
+    console.log('🕵️‍♂️ 終極分析器已啟動：XHR, Fetch, WebSocket, Performance API, DOM 監控');
+
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
+      console.log('✅ 瀏覽器支援語音識別');
+      console.log('🔍 正在創建 webkitSpeechRecognition 實例...');
       recognition = new (window as any).webkitSpeechRecognition();
+
+      console.log('⚙️ 配置語音識別參數:');
       recognition.continuous = false;
+      console.log('   - continuous: false (單次識別)');
       recognition.interimResults = true;
+      console.log('   - interimResults: true (即時結果)');
       recognition.lang = 'zh-TW';
+      console.log('   - language: zh-TW (繁體中文)');
+
+      console.log('🔧 語音識別配置完成');
 
       recognition.onresult = (event: any) => {
+        console.log('🗣️ 語音識別結果:', event);
         let finalTranscript = '';
         let interimTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
+          console.log(`📝 識別文字 ${i}:`, transcript, '最終結果:', event.results[i].isFinal);
           if (event.results[i].isFinal) {
             finalTranscript += transcript;
           } else {
@@ -37,41 +70,85 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           }
         }
 
-        setPreviewText(finalTranscript || interimTranscript);
+        const displayText = finalTranscript || interimTranscript;
+        console.log('💬 顯示文字:', displayText);
+
+        // 顯示即時識別結果
+        if (interimTranscript && !finalTranscript) {
+          setInterimText(`💭 ${interimTranscript}`);
+          setPreviewText('');
+        } else if (finalTranscript) {
+          setInterimText('');
+          setPreviewText(`💬 ${finalTranscript}`);
+        }
 
         if (finalTranscript) {
+          console.log('✅ 最終識別結果:', finalTranscript);
           processVoiceCommand(finalTranscript);
         }
       };
 
       recognition.onerror = (event: any) => {
-        console.error('語音識別錯誤:', event.error);
+        console.error('❌ 語音識別錯誤:', event.error);
         stopRecording();
       };
+    } else {
+      console.error('❌ 瀏覽器不支援 webkitSpeechRecognition');
     }
   });
 
   const startRecording = async () => {
+    console.log('🎤 開始語音錄音...');
+    console.log('🔬 ===== 深度分析：語音識別啟動流程 =====');
+
     try {
       setIsRecording(true);
       setIsActive(true);
-      setPreviewText('');
+      setPreviewText('🎤 聆聽中...');
 
       if (recognition) {
         // 先請求麥克風權限
         try {
-          await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('🔐 步驟1: 請求麥克風權限...');
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('✅ 麥克風權限已獲得');
+          console.log('📊 音頻流信息:', {
+            active: stream.active,
+            tracks: stream.getTracks().map(track => ({
+              kind: track.kind,
+              label: track.label,
+              enabled: track.enabled,
+              readyState: track.readyState
+            }))
+          });
+
+          console.log('🔥 步驟2: 啟動 Google 語音識別服務...');
+          console.log('🌐 注意觀察 Network 面板，可能會出現對 Google 服務的請求');
+
+          // 啟動深度網路監控
+          if (deepAnalysis) {
+            console.log('🕵️ 深度網路監控已就緒，準備捕捉隱藏請求...');
+          }
+
           recognition.start();
+          console.log('🚀 webkitSpeechRecognition.start() 已調用');
+          console.log('⏳ 等待 Google 語音服務響應...');
+
         } catch (permissionError) {
-          console.warn('麥克風權限被拒絕，請在瀏覽器設定中允許麥克風使用');
+          console.error('❌ 麥克風權限被拒絕:', permissionError);
           setPreviewText('❌ 需要麥克風權限');
           setIsRecording(false);
           setTimeout(() => setIsActive(false), 2000);
           return;
         }
+      } else {
+        console.error('❌ 瀏覽器不支援語音識別');
+        setPreviewText('❌ 瀏覽器不支援語音識別');
+        setIsRecording(false);
+        setTimeout(() => setIsActive(false), 2000);
       }
     } catch (error) {
-      console.error('啟動錄音失敗:', error);
+      console.error('❌ 啟動錄音失敗:', error);
       setPreviewText('❌ 錄音啟動失敗');
       setIsRecording(false);
       setTimeout(() => setIsActive(false), 2000);
@@ -79,10 +156,33 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   };
 
   const stopRecording = () => {
+    console.log('🛑 停止語音識別...');
+    console.log('🔬 ===== 深度分析：語音識別結束 =====');
+
     setIsRecording(false);
+    setInterimText(''); // 清空即時識別文字
 
     if (recognition) {
       recognition.stop();
+      console.log('🚀 webkitSpeechRecognition.stop() 已調用');
+    }
+
+    // 輸出深度分析結果
+    if (deepAnalysis) {
+      setTimeout(() => {
+        console.log('📊 ===== 深度分析報告 =====');
+        const results = deepAnalysis.stop();
+        console.log('🔍 完整分析結果:', results);
+
+        if (results.speech.speechRelated.length > 0) {
+          console.log('🎯 發現語音相關網路請求:', results.speech.speechRelated);
+        } else {
+          console.log('🤔 未發現明顯的語音 API 請求（可能被瀏覽器隱藏）');
+        }
+
+        console.log(`🌐 語音服務提供商: ${results.speechProvider}`);
+        console.log('🔬 瀏覽器能力分析:', results.browserCapabilities);
+      }, 1000);
     }
 
     // 延遲隱藏，讓用戶看到處理結果
@@ -99,7 +199,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          playerId: gameStore.player?.id || 'default_player',
+          playerId: gameStore.currentPlayer?.id || 'default_player',
           message: text,
           context: '智慧空間語音控制'
         }),
@@ -111,7 +211,8 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         if (data.type === 'movement' && data.data?.success) {
           // 成功移動
           if (data.data.newPosition) {
-            gameStore.setPlayerPosition(
+            // 更新玩家位置
+            gameActions.setPlayerPosition(
               data.data.newPosition.latitude,
               data.data.newPosition.longitude
             );
@@ -163,9 +264,16 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   return (
     <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
       {/* 語音預覽氣泡 */}
-      {(isActive() && previewText()) && (
+      {(isActive() && (previewText() || interimText())) && (
         <div class="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm max-w-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
-          {previewText()}
+          {/* 即時識別文字 - 半透明顯示 */}
+          {interimText() ? (
+            <div class="opacity-70 animate-pulse">
+              {interimText()}
+            </div>
+          ) : (
+            previewText()
+          )}
         </div>
       )}
 

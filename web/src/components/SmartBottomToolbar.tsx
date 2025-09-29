@@ -14,6 +14,8 @@ interface ToolAction {
 interface SmartBottomToolbarProps {
   onQuickMove?: (location: string) => void;
   onShowSearch?: () => void;
+  currentVoiceSystem?: 'chrome' | 'speechear';
+  onToggleVoiceSystem?: () => void;
 }
 
 export const SmartBottomToolbar: Component<SmartBottomToolbarProps> = (props) => {
@@ -85,6 +87,14 @@ export const SmartBottomToolbar: Component<SmartBottomToolbarProps> = (props) =>
         label: '搜尋',
         priority: 8,
         action: () => props.onShowSearch?.()
+      },
+      {
+        id: 'voice-system',
+        emoji: props.currentVoiceSystem === 'speechear' ? '🏠' : '🌐',
+        label: props.currentVoiceSystem === 'speechear' ? 'Speech Ear' : 'Chrome 語音',
+        priority: 9,
+        action: () => props.onToggleVoiceSystem?.(),
+        badge: props.currentVoiceSystem === 'speechear' ? '自主' : 'Google'
       }
     ];
   };
