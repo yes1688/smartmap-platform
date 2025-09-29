@@ -2,7 +2,7 @@
 export const CONFIG = {
   // API Configuration
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8081/api/v1',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || '/api/v1',
     endpoints: {
       locations: '/locations',
       historicalSites: '/historical-sites',
@@ -20,7 +20,7 @@ export const CONFIG = {
 
   // WebSocket Configuration
   websocket: {
-    url: import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws'
+    url: import.meta.env.VITE_WS_URL || '/ws'
   },
 
   // Map Configuration (Deck.gl + MapLibre)

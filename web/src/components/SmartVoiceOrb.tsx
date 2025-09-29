@@ -14,6 +14,8 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   const [previewText, setPreviewText] = createSignal('');
   const [isActive, setIsActive] = createSignal(false);
   const [interimText, setInterimText] = createSignal('');
+  const [aiResponse, setAiResponse] = createSignal('');
+  const [showAiResponse, setShowAiResponse] = createSignal(false);
 
   let mediaRecorder: MediaRecorder | null = null;
   let recognition: any = null;
@@ -208,6 +210,16 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       if (response.ok) {
         const data = await response.json();
 
+        // 顯示 AI 回應訊息
+        if (data.response) {
+          setAiResponse(data.response);
+          setShowAiResponse(true);
+          console.log('🤖 AI 回應:', data.response);
+
+          // 同時顯示在預覽文字中
+          setPreviewText(`🤖 ${data.response}`);
+        }
+
         if (data.type === 'movement' && data.data?.success) {
           // 成功移動
           if (data.data.newPosition) {
@@ -222,8 +234,15 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
             props.onMovementResponse(data.data);
           }
 
-          // 顯示成功反饋
-          setPreviewText('✅ 移動成功！');
+          // 顯示成功反饋（保留 AI 訊息，添加成功標記）
+          if (data.response) {
+            setPreviewText(`✅ ${data.response}`);
+          } else {
+            setPreviewText('✅ 移動成功！');
+          }
+        } else if (data.response) {
+          // 只有 AI 回應，沒有移動成功
+          setPreviewText(`🤖 ${data.response}`);
         } else {
           setPreviewText('❌ 指令無法執行');
         }
@@ -262,8 +281,18 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   });
 
   return (
-    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-      {/* 語音預覽氣泡 */}
+    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      {/* AI 回應訊息氣泡 - 較大且更突出 */}
+      {showAiResponse() && aiResponse() && (
+        <div class="bg-gradient-to-r from-blue-600/90 to-purple-600/90 backdrop-blur-md text-white px-4 py-3 rounded-xl text-sm max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-lg border border-white/20">
+          <div class="flex items-start gap-2">
+            <div class="text-lg">🤖</div>
+            <div class="flex-1 leading-relaxed">{aiResponse()}</div>
+          </div>
+        </div>
+      )}
+
+      {/* 語音預覽氣泡 - 語音識別和狀態 */}
       {(isActive() && (previewText() || interimText())) && (
         <div class="bg-black/80 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm max-w-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
           {/* 即時識別文字 - 半透明顯示 */}

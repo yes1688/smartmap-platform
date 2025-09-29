@@ -13,6 +13,7 @@ import LoadingOverlay from '@/components/LoadingOverlay';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { gameActions } from '@/stores/gameStore';
 import type { UIState, HistoricalSite } from '@/types';
+import { CONFIG } from '@/config';
 import '@/styles/animations.css';
 
 // 智能引擎導入
@@ -46,7 +47,7 @@ const App: Component = () => {
   const [userId] = createSignal(generateUserId());
 
   // 語音系統選擇狀態
-  const [voiceSystem, setVoiceSystem] = createSignal<'chrome' | 'speechear'>('speechear'); // 預設使用您的 Speech Ear 系統
+  const [voiceSystem, setVoiceSystem] = createSignal<'chrome' | 'speechear'>('chrome'); // 預設使用 Chrome WebAPI 語音系統
 
   // 歡迎彈窗狀態
   const [showWelcomeModal, setShowWelcomeModal] = createSignal(false);
@@ -168,7 +169,7 @@ const App: Component = () => {
     console.log(`🚀 快速移動到: ${location}`);
     // 這裡會調用 AI 移動 API
     try {
-      const response = await fetch('http://localhost:8081/api/v1/ai/chat', {
+      const response = await fetch(`${CONFIG.api.baseUrl}${CONFIG.api.endpoints.aiChat}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -279,7 +280,7 @@ const App: Component = () => {
       predictionEngine.recordInteraction('voice_command', { command: text });
 
       // 傳送語音指令到 AI 聊天 API
-      const response = await fetch('http://localhost:8081/api/v1/ai/chat', {
+      const response = await fetch(`${CONFIG.api.baseUrl}${CONFIG.api.endpoints.aiChat}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
