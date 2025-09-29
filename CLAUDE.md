@@ -8,15 +8,15 @@
 - 任何直接啟動 Vite 的指令
 
 **正確做法：**
-- ✅ 使用容器管理：`podman-compose up -d frontend`
-- ✅ 前端固定使用 port 3000
-- ✅ 優先使用容器開發環境
+- ✅ 開發環境：`podman-compose -f podman-compose.dev.yml up`
+- ✅ 生產環境：`podman-compose up`
+- ✅ 統一容器管理：支援前後端熱重載
 
 ## 當前專案狀態
 
 **專案名稱**: 智慧空間平台 (Intelligent Spatial Platform)
 **技術棧**: Go + SolidJS + Deck.gl + MapLibre GL + PostgreSQL + Ollama
-**最後更新**: 2025-09-18
+**最後更新**: 2025-09-30
 
 **當前狀態**:
 - ✅ CesiumJS 已完全移除，改用 Deck.gl + MapLibre GL
@@ -25,34 +25,50 @@
 - ✅ 新智能語音球 + 底部工具列 + 搜索系統 + 上下文面板
 - 📱 專業UI/UX設計，Glass Morphism視覺語言
 - 🎯 從聊天助手 → 智能操作代理的設計哲學轉變
+- 🐳 **統一容器管理完成** - 開發/生產環境分離，支援熱重載
 
 ## 核心開發指令
 
-### 前端開發 (容器方式)
+### 開發環境 (支援熱重載)
 ```bash
-# 啟動前端開發容器
-podman-compose up -d frontend
+# 啟動完整開發環境 (前端 + 後端 + 數據庫)
+podman-compose -f podman-compose.dev.yml up
 
-# 查看前端日誌
-podman-compose logs -f frontend
+# 背景運行開發環境
+podman-compose -f podman-compose.dev.yml up -d
 
-# 重啟前端容器
-podman-compose restart frontend
+# 查看開發環境日誌
+podman-compose -f podman-compose.dev.yml logs -f
 
-# 停止前端容器
-podman-compose stop frontend
+# 停止開發環境
+podman-compose -f podman-compose.dev.yml down
 ```
 
-### 其他常用指令
+### 生產環境 (多階段構建)
 ```bash
-# 查看所有容器狀態
-podman-compose ps
+# 構建前端資源
+npm run build -w web
 
-# 啟動所有服務
+# 啟動生產環境
 podman-compose up -d
 
-# 停止所有服務
+# 查看生產環境日誌
+podman-compose logs -f
+
+# 停止生產環境
 podman-compose down
+```
+
+### 常用管理指令
+```bash
+# 查看容器狀態
+podman-compose ps
+
+# 重新構建容器 (開發環境)
+podman-compose -f podman-compose.dev.yml build
+
+# 重新構建容器 (生產環境)
+podman-compose build
 ```
 
 ## 專案結構

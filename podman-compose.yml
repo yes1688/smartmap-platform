@@ -1,69 +1,138 @@
+# 生產環境配置 - 使用 nginx 反向代理和多階段構建
+# 使用方式: podman-compose up
+#
+# 開發環境請使用: podman-compose -f podman-compose.dev.yml up
+
 version: '3.8'
 
 services:
-  # PostgreSQL with PostGIS extension
+  # PostgreSQL database (所有環境共用)
   postgres:
     image: docker.io/postgis/postgis:15-3.3
     container_name: spatial-postgres
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-spatial_db}
+      POSTGRES_USER: ${DB_USER:-spatial_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-spatial_password}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    # ports:
-      # - "${DB_PORT}:5432"  # 內部隔離，不對外暴露
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spatial_user} -d ${DB_NAME:-spatial_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
       - spatial-network
+    profiles:
+      - dev
+      - prod
 
-  # Note: Ollama runs on host machine, not containerized
-
-  # Main Go application
-  app:
+  # Go 後端服務 - 開發模式
+  backend-dev:
     build:
       context: .
-      dockerfile: containers/Containerfile
-      args:
-        - BUILD_ENV=${BUILD_ENV:-production}
-    container_name: spatial-app
+      dockerfile: containers/Dockerfile.backend-dev
+    container_name: spatial-backend-dev
     environment:
-      - GIN_MODE=${GIN_MODE}
+      - GIN_MODE=debug
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - OLLAMA_URL=http://host.containers.internal:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL}
-      - PORT=${APP_PORT}
+      - DB_NAME=${DB_NAME:-spatial_db}
+      - DB_USER=${DB_USER:-spatial_user}
+      - DB_PASSWORD=${DB_PASSWORD:-spatial_password}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.containers.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:12b-it-qat}
+      - PORT=${APP_PORT:-8080}
       - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
-    # ports:
-      # - "${APP_PORT}:${APP_PORT}"  # 內部隔離，僅透過 nginx 訪問
+    ports:
+      - "${APP_PORT:-8080}:8080"  # 開發環境直接暴露後端端口
+    volumes:
+      - ./internal:/app/internal:ro  # 掛載源代碼支援熱重載
+      - ./cmd:/app/cmd:ro
+      - ./configs:/app/configs:ro
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${APP_PORT}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
       retries: 3
     networks:
       - spatial-network
+    profiles:
+      - dev
 
-  # Nginx reverse proxy
+  # SolidJS 前端服務 - 開發模式
+  frontend-dev:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    container_name: spatial-frontend-dev
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - VITE_API_BASE_URL=http://localhost:${APP_PORT:-8080}/api/v1
+      - VITE_WS_URL=ws://localhost:${APP_PORT:-8080}/ws
+      - VITE_SPEECH_EAR_URL=http://localhost:3001
+    ports:
+      - "${FRONTEND_DEV_PORT:-3000}:3000"  # 開發環境直接暴露前端端口
+    volumes:
+      - ./web/src:/app/src:ro  # 掛載源代碼支援熱重載
+      - ./web/public:/app/public:ro
+      - ./web/index.html:/app/index.html:ro
+      - ./web/vite.config.ts:/app/vite.config.ts:ro
+      - ./web/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./web/postcss.config.js:/app/postcss.config.js:ro
+      - /app/node_modules  # 排除 node_modules 避免衝突
+    networks:
+      - spatial-network
+    profiles:
+      - dev
+
+  # Go 應用 - 生產模式 (多階段構建)
+  app:
+    build:
+      context: .
+      dockerfile: containers/Containerfile
+      args:
+        - BUILD_ENV=production
+    container_name: spatial-app
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-spatial_db}
+      - DB_USER=${DB_USER:-spatial_user}
+      - DB_PASSWORD=${DB_PASSWORD:-spatial_password}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.containers.internal:11434}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:12b-it-qat}
+      - PORT=${APP_PORT:-8080}
+      - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
+      - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - spatial-network
+    profiles:
+      - prod
+
+  # Nginx 反向代理 - 生產模式
   nginx:
     image: docker.io/nginx:alpine
     container_name: spatial-nginx
     ports:
-      - "${NGINX_PORT}:80"
+      - "${NGINX_PORT:-8081}:80"
     volumes:
       - ./containers/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./web/dist:/usr/share/nginx/html:ro
@@ -77,6 +146,8 @@ services:
       retries: 3
     networks:
       - spatial-network
+    profiles:
+      - prod
 
 volumes:
   postgres_data:
