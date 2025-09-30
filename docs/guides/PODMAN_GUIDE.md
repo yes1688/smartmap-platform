@@ -100,7 +100,6 @@ OLLAMA_URL=http://host.containers.internal:11434
 OLLAMA_MODEL=gemma3:12b-it-qat
 
 # API Keys (請使用安全的值)
-CESIUM_ACCESS_TOKEN=your_cesium_token
 GOOGLE_PLACES_API_KEY=your_google_places_key
 ```
 

@@ -50,7 +50,7 @@
 - **效能分析**: `podman stats`, Go pprof
 - **API 測試**: Postman, curl
 - **資料庫分析**: PostgreSQL EXPLAIN, PostGIS 查詢分析
-- **3D 渲染**: CesiumJS 效能監控
+- **3D 渲染**: Deck.gl + MapLibre GL 效能監控
 - **AI 服務**: Ollama 模型效能評估
 
 #### 通用分析工具

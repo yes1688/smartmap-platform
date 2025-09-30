@@ -26,7 +26,7 @@
 2. [問題的影響範圍和嚴重程度]
 
 #### 技術環境
-- **開發環境**: Go + CesiumJS + PostgreSQL + Ollama + WebSocket
+- **開發環境**: Go + Deck.gl + MapLibre GL + PostgreSQL + Ollama + WebSocket
 - **相關技術**: [使用的具體技術棧]
 - **容器平台**: Podman + Podman Compose
 
@@ -46,7 +46,7 @@
 
 #### 智慧空間平台整合考量
 - **後端整合**: 與現有 Go/Gin 框架整合
-- **3D 地圖**: CesiumJS 相容性檢查
+- **3D 地圖**: Deck.gl + MapLibre GL 相容性檢查
 - **AI 服務**: Ollama 本地 LLM 整合
 - **即時通訊**: WebSocket 支援
 - **資料庫**: PostgreSQL + PostGIS 空間查詢
@@ -101,7 +101,7 @@ DELETE /api/v1/[endpoint]       # [功能描述]
 
 ### 智慧空間平台特殊測試
 - [ ] **容器整合測試**: Podman 容器正常啟動
-- [ ] **3D 地圖測試**: CesiumJS 功能正常運作
+- [ ] **3D 地圖測試**: Deck.gl + MapLibre GL 功能正常運作
 - [ ] **AI 服務測試**: Ollama 整合無誤
 - [ ] **WebSocket 測試**: 即時通訊功能正常
 - [ ] **資料庫測試**: PostGIS 空間查詢效能
@@ -118,7 +118,7 @@ DELETE /api/v1/[endpoint]       # [功能描述]
 | 風險項目 | 風險等級 | 影響程度 | 應對策略 |
 |----------|----------|----------|----------|
 | [技術風險] | 🔴高/🟡中/🟢低 | [影響說明] | [應對方案] |
-| CesiumJS 相容性 | 🟡中 | 3D 地圖功能異常 | 版本測試、降級方案 |
+| Deck.gl + MapLibre GL 相容性 | 🟡中 | 3D 地圖功能異常 | 版本測試、降級方案 |
 | Ollama 服務穩定性 | 🟡中 | AI 功能不可用 | 錯誤處理、備援方案 |
 | PostGIS 效能 | 🟢低 | 查詢速度影響 | 索引優化、快取策略 |
 
@@ -147,7 +147,7 @@ DELETE /api/v1/[endpoint]       # [功能描述]
 - [README.md](../../README.md) - 專案主要文檔
 
 ### 技術文檔
-- [CesiumJS 官方文檔](https://cesium.com/learn/)
+- [Deck.gl + MapLibre GL 官方文檔](https://deck.gl.com/learn/)
 - [Ollama 使用指南](https://ollama.ai/docs)
 - [PostGIS 文檔](https://postgis.net/documentation/)
 - [Go Gin 框架](https://gin-gonic.com/docs/)
