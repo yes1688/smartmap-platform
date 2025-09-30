@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"time"
@@ -360,7 +361,23 @@ func (s *Service) ProcessAIMovementCommand(playerID, command, sessionID, ipAddre
 	audit := s.movementParser.LogMovementCommand(playerID, sessionID, ipAddress, moveCmd, true, "")
 
 	// Generate AI response
-	aiResponse, _ := s.aiService.ProcessMovementCommand(command, playerID, currentLocation)
+	aiResponse, err := s.aiService.ProcessMovementCommand(command, playerID, currentLocation)
+	if err != nil {
+		log.Printf("⚠️ AI 生成回應失敗 (使用 fallback): %v", err)
+		// Fallback message if AI service is unavailable or rate limited
+		aiResponse = fmt.Sprintf("✅ 好的！帶你去 %s 😊", moveCmd.Destination.Name)
+		if moveCmd.Destination.Name == "" || moveCmd.Destination.Name == moveCmd.Destination.Address {
+			aiResponse = fmt.Sprintf("✅ 好的！帶你去 %s 😊", moveCmd.Destination.Address)
+		}
+	} else if aiResponse == "" {
+		log.Printf("⚠️ AI 返回空回應 (使用 fallback)")
+		aiResponse = fmt.Sprintf("✅ 好的！帶你去 %s 😊", moveCmd.Destination.Name)
+		if moveCmd.Destination.Name == "" || moveCmd.Destination.Name == moveCmd.Destination.Address {
+			aiResponse = fmt.Sprintf("✅ 好的！帶你去 %s 😊", moveCmd.Destination.Address)
+		}
+	} else {
+		log.Printf("✅ AI 成功生成回應: %s", aiResponse)
+	}
 
 	return &AIMovementResult{
 		Success:         true,
