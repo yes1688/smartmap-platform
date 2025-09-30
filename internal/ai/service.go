@@ -260,6 +260,13 @@ func (s *Service) chatWithOpenRouter(prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	// Log HTTP status for debugging
+	if resp.StatusCode != http.StatusOK {
+		var errorBody bytes.Buffer
+		errorBody.ReadFrom(resp.Body)
+		return "", fmt.Errorf("OpenRouter API returned status %d: %s", resp.StatusCode, errorBody.String())
+	}
+
 	var response OpenRouterResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return "", fmt.Errorf("failed to decode OpenRouter response: %v", err)

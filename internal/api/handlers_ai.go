@@ -62,7 +62,12 @@ func (h *Handler) ChatWithAI(c *gin.Context) {
 	// Fall back to regular AI chat
 	response, err := h.ai.Chat(request.Message, request.Context)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Log detailed error for debugging
+		h.logger.WithError(err).WithField("message", request.Message).Error("AI chat failed")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "AI service unavailable",
+			"details": err.Error(),
+		})
 		return
 	}
 

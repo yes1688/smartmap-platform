@@ -35,10 +35,11 @@ export class DeepNetworkAnalyzer {
     this.originalFetch = window.fetch;
     window.fetch = async (...args) => {
       const [url, options] = args;
-      console.log('🌐 Fetch:', { url: url.toString(), method: options?.method || 'GET' });
+      const urlString = url.toString();
 
-      if (url.toString().includes('speech') || url.toString().includes('google')) {
-        console.log('🎯 語音相關 Fetch 請求!', { url, options });
+      // 只記錄語音相關的請求，忽略常規請求
+      if (urlString.includes('speech') || urlString.includes('google') || urlString.includes('voice')) {
+        console.log('🎯 語音相關 Fetch 請求!', { url: urlString, method: options?.method || 'GET' });
       }
 
       return this.originalFetch.apply(window, args);
@@ -125,8 +126,6 @@ export class DeepNetworkAnalyzer {
   public analyzeResourceTiming() {
     const entries = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
 
-    console.log('📊 資源時序分析:', entries.length, '個資源');
-
     const suspiciousEntries = entries.filter(entry => {
       return entry.name.includes('speech') ||
              entry.name.includes('google') ||
@@ -135,22 +134,17 @@ export class DeepNetworkAnalyzer {
              entry.name.includes('apis');
     });
 
+    // 只在找到可疑資源時才打印日誌
     if (suspiciousEntries.length > 0) {
-      console.log('🎯 發現可疑資源:', suspiciousEntries);
+      console.log('🎯 發現語音相關資源:', suspiciousEntries.length, '個');
       suspiciousEntries.forEach(entry => {
         console.log('📝 資源詳情:', {
           name: entry.name,
           initiatorType: entry.initiatorType,
           transferSize: entry.transferSize,
-          encodedBodySize: entry.encodedBodySize,
-          decodedBodySize: entry.decodedBodySize,
-          duration: entry.duration,
-          responseStart: entry.responseStart,
-          responseEnd: entry.responseEnd
+          duration: entry.duration
         });
       });
-    } else {
-      console.log('🤔 Resource Timing API 也沒有發現明顯的語音請求');
     }
 
     return suspiciousEntries;
