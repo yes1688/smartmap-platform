@@ -15,6 +15,12 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: false, // 允許自動切換端口
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'smartmap.94work.net', // Cloudflare 代理域名
+      '.94work.net', // 允許所有 94work.net 子域名
+    ],
     proxy: {
       // API 代理到後端容器
       '/api': {
