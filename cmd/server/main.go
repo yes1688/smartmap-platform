@@ -167,8 +167,8 @@ type Services struct {
 }
 
 func initServices(db *gorm.DB) *Services {
-	// Initialize AI service
-	aiService := ai.NewService(os.Getenv("OLLAMA_URL"))
+	// Initialize AI service (automatically detects provider from environment)
+	aiService := ai.NewService()
 
 	// Initialize game service
 	gameService := game.NewService(db, aiService)

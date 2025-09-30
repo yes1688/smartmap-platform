@@ -130,10 +130,19 @@ intelligent-spatial-platform/
 
 ## 📖 詳細文檔
 
+### 核心文檔
 - **[API 文檔](docs/API.md)** - REST API 和 WebSocket 規格
 - **[開發指南](docs/DEVELOPMENT.md)** - 完整開發工作流程
 - **[問題排除](docs/TROUBLESHOOTING.md)** - 常見問題和解決方案
-- **[部署文檔](docs/DEPLOYMENT.md)** - 環境配置和部署
+
+### 操作指南
+- **[快速測試指南](docs/guides/QUICK_START_TESTING_GUIDE.md)** - 新手測試教學
+- **[Podman 容器指南](docs/guides/PODMAN_GUIDE.md)** - 容器管理完整說明
+
+### 分析報告
+- **[第一階段完成報告](docs/reports/PHASE_1_COMPLETION_REPORT.md)** - 最新改善成果
+- **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 專案結構分析
+- **[測試框架報告](docs/reports/TEST_SETUP_REPORT.md)** - 測試系統說明
 
 ## 🤝 開發指南
 

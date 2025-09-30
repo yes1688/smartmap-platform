@@ -6,17 +6,38 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"intelligent-spatial-platform/internal/geo"
 )
 
+// AI Provider types
+type ProviderType string
+
+const (
+	ProviderOllama     ProviderType = "ollama"
+	ProviderOpenRouter ProviderType = "openrouter"
+)
+
 type Service struct {
-	ollamaURL        string
-	client           *http.Client
+	provider         ProviderType
 	geocodingService *geo.GeocodingService
+	client           *http.Client
+	rateLimiter      *AIRateLimiter
+
+	// Ollama specific
+	ollamaURL   string
+	ollamaModel string
+
+	// OpenRouter specific
+	openRouterURL    string
+	openRouterAPIKey string
+	openRouterModel  string
 }
 
+// Request/Response structures for Ollama
 type OllamaRequest struct {
 	Model  string `json:"model"`
 	Prompt string `json:"prompt"`
@@ -28,7 +49,63 @@ type OllamaResponse struct {
 	Done     bool   `json:"done"`
 }
 
-func NewService(ollamaURL string) *Service {
+// Request/Response structures for OpenRouter
+type OpenRouterRequest struct {
+	Model    string    `json:"model"`
+	Messages []Message `json:"messages"`
+	Stream   bool      `json:"stream"`
+}
+
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type OpenRouterResponse struct {
+	Choices []Choice `json:"choices"`
+	Error   *APIError `json:"error,omitempty"`
+}
+
+type Choice struct {
+	Message Message `json:"message"`
+}
+
+type APIError struct {
+	Message string `json:"message"`
+	Type    string `json:"type"`
+}
+
+// Rate limiter for AI requests
+type AIRateLimiter struct {
+	lastRequest time.Time
+	mu          sync.Mutex
+	minInterval time.Duration
+}
+
+func NewAIRateLimiter(rpm int) *AIRateLimiter {
+	minInterval := time.Minute / time.Duration(rpm)
+	return &AIRateLimiter{
+		minInterval: minInterval,
+	}
+}
+
+func (r *AIRateLimiter) Allow() (bool, time.Duration) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	now := time.Now()
+	timeSinceLastRequest := now.Sub(r.lastRequest)
+
+	if timeSinceLastRequest >= r.minInterval {
+		r.lastRequest = now
+		return true, 0
+	}
+
+	waitTime := r.minInterval - timeSinceLastRequest
+	return false, waitTime
+}
+
+func NewService() *Service {
 	// Initialize geocoding service
 	geocodingService, err := geo.NewGeocodingService()
 	if err != nil {
@@ -36,40 +113,104 @@ func NewService(ollamaURL string) *Service {
 		fmt.Printf("Warning: Failed to initialize geocoding service: %v\n", err)
 	}
 
-	return &Service{
-		ollamaURL:        ollamaURL,
+	// Determine AI provider from environment
+	providerStr := strings.ToLower(os.Getenv("AI_PROVIDER"))
+	var provider ProviderType
+	switch providerStr {
+	case "openrouter":
+		provider = ProviderOpenRouter
+	case "ollama", "":
+		provider = ProviderOllama
+	default:
+		fmt.Printf("Warning: Unknown AI provider '%s', defaulting to ollama\n", providerStr)
+		provider = ProviderOllama
+	}
+
+	// Initialize rate limiter
+	rpm := 60 // Default to 60 requests per minute for Ollama
+	if provider == ProviderOpenRouter {
+		rpm = 1 // OpenRouter free tier limit
+	}
+	rateLimiter := NewAIRateLimiter(rpm)
+
+	service := &Service{
+		provider:         provider,
 		geocodingService: geocodingService,
+		rateLimiter:      rateLimiter,
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 60 * time.Second,
 		},
 	}
+
+	// Configure provider-specific settings
+	switch provider {
+	case ProviderOllama:
+		service.ollamaURL = os.Getenv("OLLAMA_URL")
+		if service.ollamaURL == "" {
+			service.ollamaURL = "http://localhost:11434"
+		}
+		service.ollamaModel = os.Getenv("OLLAMA_MODEL")
+		if service.ollamaModel == "" {
+			service.ollamaModel = "phi4-mini-max:latest"
+		}
+		fmt.Printf("AI Service initialized with Ollama: %s (model: %s)\n", service.ollamaURL, service.ollamaModel)
+
+	case ProviderOpenRouter:
+		service.openRouterURL = os.Getenv("OPENROUTER_URL")
+		if service.openRouterURL == "" {
+			service.openRouterURL = "https://openrouter.ai/api/v1/chat/completions"
+		}
+		service.openRouterAPIKey = os.Getenv("OPENROUTER_API_KEY")
+		service.openRouterModel = os.Getenv("OPENROUTER_MODEL")
+		if service.openRouterModel == "" {
+			service.openRouterModel = "google/gemma-2-27b-it:free"
+		}
+		if service.openRouterAPIKey == "" {
+			fmt.Printf("Warning: OPENROUTER_API_KEY not set\n")
+		}
+		fmt.Printf("AI Service initialized with OpenRouter: %s (model: %s)\n", service.openRouterModel, service.openRouterURL)
+	}
+
+	return service
 }
 
 func (s *Service) Chat(message, context string) (string, error) {
-	// 為一般聊天添加台灣用語指示
+	// Check rate limit
+	if allowed, waitTime := s.rateLimiter.Allow(); !allowed {
+		return "", fmt.Errorf("rate limit exceeded, please wait %v before making another request", waitTime)
+	}
+
+	// Build the final prompt/message
 	baseContext := "你是智慧空間平台的AI助理，請用台灣常見的用語和較親切的語調回答。回答請簡潔有用，不要太冗長。"
 
-	prompt := message
+	var fullMessage string
 	if context != "" {
-		prompt = fmt.Sprintf("%s\n\nContext: %s\n\nUser: %s", baseContext, context, message)
+		fullMessage = fmt.Sprintf("%s\n\nContext: %s\n\nUser: %s", baseContext, context, message)
 	} else {
-		prompt = fmt.Sprintf("%s\n\nUser: %s", baseContext, message)
+		fullMessage = fmt.Sprintf("%s\n\nUser: %s", baseContext, message)
 	}
 
-	model := os.Getenv("OLLAMA_MODEL")
-	if model == "" {
-		model = "phi4-mini-max:latest"
+	// Route to appropriate provider
+	switch s.provider {
+	case ProviderOllama:
+		return s.chatWithOllama(fullMessage)
+	case ProviderOpenRouter:
+		return s.chatWithOpenRouter(fullMessage)
+	default:
+		return "", fmt.Errorf("unsupported AI provider: %s", s.provider)
 	}
+}
 
+func (s *Service) chatWithOllama(prompt string) (string, error) {
 	request := OllamaRequest{
-		Model:  model,
+		Model:  s.ollamaModel,
 		Prompt: prompt,
 		Stream: false,
 	}
 
 	jsonData, err := json.Marshal(request)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request: %v", err)
+		return "", fmt.Errorf("failed to marshal Ollama request: %v", err)
 	}
 
 	resp, err := s.client.Post(s.ollamaURL+"/api/generate", "application/json", bytes.NewBuffer(jsonData))
@@ -80,10 +221,59 @@ func (s *Service) Chat(message, context string) (string, error) {
 
 	var response OllamaResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", fmt.Errorf("failed to decode response: %v", err)
+		return "", fmt.Errorf("failed to decode Ollama response: %v", err)
 	}
 
 	return response.Response, nil
+}
+
+func (s *Service) chatWithOpenRouter(prompt string) (string, error) {
+	request := OpenRouterRequest{
+		Model: s.openRouterModel,
+		Messages: []Message{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+		Stream: false,
+	}
+
+	jsonData, err := json.Marshal(request)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal OpenRouter request: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", s.openRouterURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create OpenRouter request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.openRouterAPIKey)
+	req.Header.Set("HTTP-Referer", "https://smartmap-platform.local")
+	req.Header.Set("X-Title", "Smart Map Platform")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to call OpenRouter API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var response OpenRouterResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return "", fmt.Errorf("failed to decode OpenRouter response: %v", err)
+	}
+
+	if response.Error != nil {
+		return "", fmt.Errorf("OpenRouter API error: %s (%s)", response.Error.Message, response.Error.Type)
+	}
+
+	if len(response.Choices) == 0 {
+		return "", fmt.Errorf("no response from OpenRouter API")
+	}
+
+	return response.Choices[0].Message.Content, nil
 }
 
 func (s *Service) GenerateHistoricalSiteIntroduction(site *geo.HistoricalSite) (string, error) {
