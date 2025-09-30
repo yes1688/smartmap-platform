@@ -450,7 +450,7 @@ podman exec spatial-backend-dev go build ./cmd/server
 # 沒有錯誤訊息就成功
 
 # ✅ 步驟 3: 服務是否運行
-curl http://localhost:8081/health
+curl http://localhost:7004/health
 # 看到 {"status":"healthy"} 就成功
 ```
 
@@ -525,7 +525,7 @@ alias test-game='podman exec spatial-backend-dev go test ./internal/game -v'
 alias test-cover='podman exec spatial-backend-dev go test ./internal/... -cover'
 
 # 健康檢查
-alias health='curl -s http://localhost:8081/health | jq .'
+alias health='curl -s http://localhost:7004/health | jq .'
 ```
 
 ---

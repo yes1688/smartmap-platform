@@ -17,7 +17,7 @@
 - **前端**: 編譯為靜態文件，透過 nginx 服務
 - **後端**: 多階段構建，最佳化的 Go 二進制文件
 - **數據庫**: PostgreSQL with PostGIS
-- **反向代理**: nginx (端口 8081)
+- **反向代理**: nginx (端口 7004)
 - **內部隔離**: 服務間透過內部網路通訊
 
 ## 使用方式
@@ -93,7 +93,7 @@ DB_PASSWORD=your_secure_password
 # 服務端口
 APP_PORT=8080
 FRONTEND_DEV_PORT=3000
-NGINX_PORT=8081
+PORT=7004
 
 # AI 模型配置
 OLLAMA_URL=http://host.containers.internal:11434
@@ -183,7 +183,7 @@ npm run build -w web
 podman-compose --profile prod up -d
 
 # 3. 檢查服務健康狀態
-curl http://localhost:8081/health
+curl http://localhost:7004/health
 
 # 4. 檢查所有服務
 podman-compose --profile prod ps

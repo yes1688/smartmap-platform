@@ -2,186 +2,242 @@
 
 > 一個結合 AI、語音控制和 3D 地圖的智慧空間平台
 
-[![Go Version](https://img.shields.io/badge/Go-1.21+-blue.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://golang.org/)
 [![SolidJS](https://img.shields.io/badge/SolidJS-1.8+-green.svg)](https://solidjs.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## 🌟 專案特色
 
 - **🗺️ 3D 地圖視覺化**: 基於 Deck.gl + MapLibre GL 的高品質地形地圖
-- **🤖 AI 智慧對話**: 整合 Ollama 本地 LLM 進行智慧互動
+- **🤖 AI 智慧對話**: 整合 Ollama/OpenRouter 雙 AI 系統
 - **🎤 語音控制**: 支援繁體中文語音識別與合成
 - **🎮 互動遊戲**: 物品收集、分數系統與等級進階
 - **🏛️ 歷史景點**: 自動介紹台灣歷史文化景點
 - **⚡ 即時通訊**: WebSocket 支援多人互動
 - **🐳 容器化部署**: 使用 Podman 進行容器編排
-- **📍 空間資料庫**: PostGIS 支援地理資訊查詢
-
-## 🏗️ 技術架構
-
-### 後端技術棧
-- **Go 1.21+** - 主要程式語言
-- **Gin** - Web 框架
-- **PostgreSQL + PostGIS** - 空間資料庫
-- **Ollama** - 本地 LLM 服務
-- **WebSocket** - 即時通訊
-- **GORM** - ORM 資料庫操作
-
-### 前端技術棧
-- **SolidJS 1.8+** - 響應式前端框架
-- **Deck.gl + MapLibre GL** - 3D 地圖渲染引擎
-- **TailwindCSS** - 樣式框架
-- **Vite** - 構建工具
-- **WebRTC** - 語音識別 API
-
-### 基礎設施
-- **Podman + Podman Compose** - 容器化部署
-- **多階段構建** - 優化容器映像大小
+- **🧪 完整測試**: 23% 測試覆蓋率，持續改進中
 
 ## 🚀 快速開始
 
-### 系統需求
+### 前置需求
 
-- **操作系統**: Linux/macOS/Windows
-- **容器運行時**: Podman 4.0+
-- **開發工具**: Go 1.21+, Node.js 18+, Git
+- **Podman** 4.0+
+- **Go** 1.23+ (本機開發)
+- **Node.js** 20+ (本機開發)
 
-### 開發環境啟動
+### 一鍵啟動
 
 ```bash
-# 克隆專案
-git clone https://github.com/your-username/intelligent-spatial-platform.git
-cd intelligent-spatial-platform
+# 1. Clone 專案
+git clone https://github.com/yes1688/smartmap-platform.git
+cd smartmap-platform
 
-# 啟動前端開發容器 (推薦)
-podman-compose up -d frontend
+# 2. 配置環境變數
+cp .env.example .env
+# 編輯 .env 填入你的 API Keys
 
-# 啟動所有服務
-podman-compose up -d
+# 3. 啟動（二選一）
 
-# 訪問應用程式
-open http://localhost:3000
+# 🔧 本機開發（熱重載）
+./run dev
+
+# 🚀 生產環境（優化構建）
+./run prod
 ```
 
-### ⚠️ 重要開發規則
+### 訪問地址
 
-- **禁止執行 `npm run dev`** - 必須使用容器管理
-- **前端固定使用 port 3000** - 禁止自動切換端口
-- **優先使用容器開發** - `podman-compose up -d frontend`
+**所有環境統一使用**: http://localhost:7004
 
-## 📁 專案結構
+| 環境 | 說明 | 特點 |
+|-----|------|-----|
+| 開發環境 | `./run dev` | 熱重載 ⚡ |
+| 生產環境 | `./run prod` | 優化構建 🚀 |
 
-```
-intelligent-spatial-platform/
-├── cmd/server/                 # Go 應用程式入口
-├── internal/                   # 核心業務邏輯
-│   ├── api/                   # REST API 處理器
-│   ├── ai/                    # Ollama AI 整合
-│   ├── game/                  # 遊戲邏輯
-│   ├── geo/                   # 地理資料處理
-│   ├── voice/                 # 語音處理
-│   └── websocket/             # WebSocket 處理
-├── web/                       # SolidJS 前端 (port 3000)
-│   ├── src/components/        # UI 組件
-│   ├── src/stores/           # 狀態管理
-│   └── src/config.ts         # 配置檔案
-├── containers/               # 容器配置
-├── docs/                    # 詳細文檔
-│   ├── API.md              # API 端點規格
-│   ├── DEVELOPMENT.md      # 開發指南
-│   ├── TROUBLESHOOTING.md  # 問題排除
-│   └── DEPLOYMENT.md       # 部署文檔
-└── README.md               # 專案說明
+**統一路由結構**：
+- 前端應用：`http://localhost:7004/`
+- API 端點：`http://localhost:7004/api/v1`
+- WebSocket：`ws://localhost:7004/ws`
+- 健康檢查：`http://localhost:7004/health`
+
+✅ **無論哪個環境，永遠都是 7004！**
+
+## 📋 管理指令
+
+### 開發環境（最常用）
+```bash
+./run dev           # 啟動開發環境（熱重載）
+./run dev-stop      # 停止
+./run dev-logs      # 查看日誌
 ```
 
-## 🎮 功能說明
+### 生產環境
+```bash
+./run prod          # 啟動生產環境
+./run prod-stop     # 停止
+./run prod-logs     # 查看日誌
+```
 
-### 1. 3D 地圖導航
-- 基於 Deck.gl + MapLibre GL 的高品質地形地圖
-- 30 度傾斜視角提供立體感
+### 工具指令
+```bash
+./run build         # 構建前端
+./run test-run      # 運行測試
+./run shell         # 進入後端容器
+./run db            # 進入數據庫
+./run status        # 查看狀態
+./run clean         # 清理所有環境
+```
+
+## 🏗️ 技術架構
+
+### 後端
+- **Go 1.23** + **Gin** - Web 框架
+- **PostgreSQL** + **PostGIS** - 空間資料庫
+- **Ollama** / **OpenRouter** - AI 服務（可切換）
+- **WebSocket** - 即時通訊
+- **GORM** - ORM
+
+### 前端
+- **SolidJS 1.8** - 響應式框架
+- **Deck.gl** + **MapLibre GL** - 地圖引擎
+- **TailwindCSS** - 樣式
+- **Vite** - 構建工具
+
+### DevOps
+- **Podman** + **Podman Compose** - 容器化
+- **GitHub Actions** - CI/CD
+- **Nginx** - 反向代理（生產環境）
+
+## 📖 核心功能
+
+### 1. 智慧地圖系統
+- 30 度傾斜視角立體地圖
 - ESRI World Topo Map 地形底圖
 - 自定義標記與資訊視窗
+- 即時位置追蹤
 
 ### 2. AI 智能助手
-- 整合 Ollama 本地 LLM
+- 雙 AI 系統（Ollama + OpenRouter）
 - 中文對話與語境理解
-- 歷史景點自動介紹生成
-- 遊戲狀態分析與建議
+- 歷史景點自動介紹
+- AI 控制角色移動
 
-### 3. 語音控制系統
+### 3. 語音控制
 - Web Speech API 語音識別
 - 支援繁體中文指令
 - 語音合成回應
-- AI 控制兔子移動
 
-#### 支援的語音指令:
+支援指令範例：
 ```
 "移動兔子到台北101"
 "介紹這個地方"
 "顯示我的遊戲統計"
-"收集附近的物品"
 ```
 
-### 4. 互動遊戲機制
-- 兔子角色在地圖上顯示
+### 4. 遊戲系統
+- 角色在地圖上顯示
 - 物品收集與分數系統
-- 等級進階系統
-- AI 控制移動功能
+- 等級進階
+- AI 智能移動
 
-## 📖 詳細文檔
+## 📚 文檔
 
 ### 核心文檔
-- **[API 文檔](docs/API.md)** - REST API 和 WebSocket 規格
 - **[開發指南](docs/DEVELOPMENT.md)** - 完整開發工作流程
+- **[API 文檔](docs/API.md)** - REST API 和 WebSocket 規格
 - **[問題排除](docs/TROUBLESHOOTING.md)** - 常見問題和解決方案
 
 ### 操作指南
 - **[快速測試指南](docs/guides/QUICK_START_TESTING_GUIDE.md)** - 新手測試教學
 - **[Podman 容器指南](docs/guides/PODMAN_GUIDE.md)** - 容器管理完整說明
+- **[環境配置指南](docs/guides/ENVIRONMENT_SETUP_GUIDE.md)** - 多環境管理
 
 ### 分析報告
 - **[第一階段完成報告](docs/reports/PHASE_1_COMPLETION_REPORT.md)** - 最新改善成果
 - **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 專案結構分析
 - **[測試框架報告](docs/reports/TEST_SETUP_REPORT.md)** - 測試系統說明
 
-## 🤝 開發指南
-
-### 核心開發指令
+## 🧪 測試
 
 ```bash
-# 啟動前端開發容器
-podman-compose up -d frontend
+# 運行所有測試
+./run test-run
 
-# 查看前端日誌
-podman-compose logs -f frontend
-
-# 重啟前端容器
-podman-compose restart frontend
-
-# 查看所有容器狀態
-podman-compose ps
+# 或手動運行
+podman exec spatial-backend-dev go test ./internal/... -v -cover
 ```
 
-### 程式碼規範
+**當前測試覆蓋率**: 23% (持續改進中)
 
-- **Go**: 遵循 `gofmt` 格式化規則
-- **TypeScript**: 使用嚴格模式
-- **CSS**: 優先使用 TailwindCSS 類別
-- **Git**: 使用有意義的提交訊息
+## 🤝 開發工作流程
 
-## 🎯 當前狀態
+```bash
+# 1. 本機開發
+./run dev
 
-- ✅ **地圖系統**: Deck.gl + MapLibre GL 已完成
-- ✅ **視角調整**: 30度傾斜視角
-- ✅ **地形底圖**: ESRI World Topo Map
-- ⚠️ **兔子角色**: 顯示功能需要修復
+# 2. 修改代碼（自動重載）
 
-## 📄 授權條款
+# 3. 運行測試
+./run test-run
 
-本專案採用 MIT 授權條款 - 詳見 [LICENSE](LICENSE) 檔案
+# 4. 提交前驗證（生產級構建）
+./run dev-stop
+./run prod
+
+# 5. 驗證通過後提交
+git add .
+git commit -m "feat: your feature"
+git push
+```
+
+## 📊 專案統計
+
+- **後端代碼**: 3,000+ 行 Go
+- **前端代碼**: 9,500+ 行 TypeScript/TSX
+- **測試代碼**: 370+ 行
+- **文檔**: 5,000+ 行
+- **測試覆蓋率**: 23%
+
+## 🎯 開發哲學
+
+本專案遵循 **Linus Torvalds 實用主義哲學**：
+
+> "Talk is cheap. Show me the code."
+>
+> "先讓它運作，再讓它完美"
+
+**核心原則**：
+- ✅ 功能優先於架構
+- ✅ 簡單優於複雜
+- ✅ 實用優於優雅
+- ✅ 漸進式改進
+
+詳見：[CLAUDE.md](CLAUDE.md)
+
+## 📝 版本歷史
+
+### v1.0.0 (2025-09-30)
+- ✅ 完成基礎功能開發
+- ✅ 建立測試框架（23% 覆蓋率）
+- ✅ API handlers 模組化
+- ✅ 前端組件分類
+- ✅ CI/CD 自動化
+- ✅ 多環境支援
+
+## 📄 授權
+
+MIT License - 詳見 [LICENSE](LICENSE)
+
+## 👥 貢獻
+
+歡迎提交 Issue 和 Pull Request！
 
 ---
 
-**⭐ 如果這個專案對您有幫助，請給我們一個星星！**
+**🎉 現在就開始你的智慧空間之旅！**
 
-**📧 有任何問題或建議，歡迎開 Issue 或聯繫我們**
+```bash
+./run dev
+```
+
+*智慧空間平台 | 由 Go + SolidJS + AI 驅動 | 2025*

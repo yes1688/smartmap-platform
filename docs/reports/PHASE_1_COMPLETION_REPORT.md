@@ -284,7 +284,7 @@ cd web && npm run build
 
 ### 驗證服務運行
 ```bash
-curl http://localhost:8081/health
+curl http://localhost:7004/health
 
 # 預期輸出
 {"status":"healthy","version":"dev","buildEnv":"development"}

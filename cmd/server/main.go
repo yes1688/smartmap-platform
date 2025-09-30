@@ -124,10 +124,30 @@ func initDatabase() (*gorm.DB, error) {
 		os.Getenv("DB_PORT"),
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	// Retry logic for database connection
+	var db *gorm.DB
+	var err error
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			break
+		}
+
+		if i < maxRetries-1 {
+			logrus.Warnf("Failed to connect to database (attempt %d/%d): %v. Retrying in %v...",
+				i+1, maxRetries, err, retryDelay)
+			time.Sleep(retryDelay)
+		}
 	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database after %d attempts: %v", maxRetries, err)
+	}
+
+	logrus.Info("Successfully connected to database")
 
 	sqlDB, err := db.DB()
 	if err != nil {

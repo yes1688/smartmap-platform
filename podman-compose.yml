@@ -8,7 +8,7 @@ version: '3.8'
 services:
   # PostgreSQL database (所有環境共用)
   postgres:
-    image: docker.io/postgis/postgis:15-3.3
+    image: docker.io/postgis/postgis:16-3.4
     container_name: spatial-postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-spatial_db}
@@ -132,7 +132,7 @@ services:
     image: docker.io/nginx:alpine
     container_name: spatial-nginx
     ports:
-      - "${NGINX_PORT:-8081}:80"
+      - "${PORT:-7004}:80"  # 統一端口 7004
     volumes:
       - ./containers/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./web/dist:/usr/share/nginx/html:ro

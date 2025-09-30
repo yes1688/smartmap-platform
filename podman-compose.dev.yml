@@ -1,10 +1,10 @@
-# 開發環境專用配置 - 支援前後端熱重載
+# 開發環境專用配置 - 支援前後端熱重載 + Nginx 統一入口
 version: '3.8'
 
 services:
   # PostgreSQL database
   postgres:
-    image: docker.io/postgis/postgis:15-3.3
+    image: docker.io/postgis/postgis:16-3.4
     container_name: spatial-postgres-dev
     environment:
       POSTGRES_DB: ${DB_NAME:-spatial_db}
@@ -14,8 +14,6 @@ services:
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
       - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "${DB_PORT:-5432}:5432"  # 開發環境暴露數據庫端口方便調試
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-spatial_user} -d ${DB_NAME:-spatial_db}"]
       interval: 10s
@@ -49,14 +47,12 @@ services:
       - PORT=8080
       - CESIUM_ACCESS_TOKEN=${CESIUM_ACCESS_TOKEN}
       - GOOGLE_PLACES_API_KEY=${GOOGLE_PLACES_API_KEY}
-    ports:
-      - "${APP_PORT:-8080}:8080"  # 直接暴露後端端口
     volumes:
       - ./internal:/app/internal:ro  # 源代碼熱重載
       - ./cmd:/app/cmd:ro
       - ./configs:/app/configs:ro
-      - ./go.mod:/app/go.mod  # Go 模組檔案
-      - ./go.sum:/app/go.sum  # Go 依賴檢查檔案
+      - ./go.mod:/app/go.mod
+      - ./go.sum:/app/go.sum
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,11 +74,9 @@ services:
       - NODE_ENV=development
       - PORT=3000
       - HOST=0.0.0.0
-      - VITE_API_BASE_URL=http://localhost:${APP_PORT:-8080}/api/v1
-      - VITE_WS_URL=ws://localhost:${APP_PORT:-8080}/ws
+      - VITE_API_BASE_URL=/api/v1
+      - VITE_WS_URL=ws://localhost:${PORT:-7004}/ws
       - VITE_SPEECH_EAR_URL=http://localhost:3001
-    ports:
-      - "${FRONTEND_DEV_PORT:-3000}:3000"  # 直接暴露前端端口
     volumes:
       - ./web/src:/app/src:ro  # 源代碼熱重載
       - ./web/public:/app/public:ro
@@ -98,6 +92,27 @@ services:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
+      retries: 3
+    networks:
+      - spatial-dev-network
+
+  # Nginx 反向代理 - 開發環境統一入口
+  nginx:
+    image: docker.io/nginx:alpine
+    container_name: spatial-nginx-dev
+    ports:
+      - "${PORT:-7004}:80"  # 統一端口 7004
+    volumes:
+      - ./containers/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
       retries: 3
     networks:
       - spatial-dev-network
