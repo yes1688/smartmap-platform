@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -63,7 +64,7 @@ func (h *Handler) ChatWithAI(c *gin.Context) {
 	response, err := h.ai.Chat(request.Message, request.Context)
 	if err != nil {
 		// Log detailed error for debugging
-		h.logger.WithError(err).WithField("message", request.Message).Error("AI chat failed")
+		log.Printf("ERROR: AI chat failed - message: %s, error: %v", request.Message, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "AI service unavailable",
 			"details": err.Error(),
