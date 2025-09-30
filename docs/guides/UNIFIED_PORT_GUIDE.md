@@ -1,6 +1,6 @@
 # 🎯 統一端口架構指南
 
-> 所有環境使用統一端口 7004
+> 所有環境使用統一端口 7003
 
 ## 🌟 核心理念
 
@@ -9,7 +9,7 @@
 One Port, Three Modes
 ```
 
-**7004 = 開發環境 = 測試環境 = 生產環境**
+**7003 = 開發環境 = 測試環境 = 生產環境**
 
 ---
 
@@ -28,7 +28,7 @@ One Port, Three Modes
 #### 之前（多端口）❌
 ```bash
 開發環境: localhost:3002
-測試環境: localhost:7004
+測試環境: localhost:7003
 生產環境: localhost:8081
 
 # 問題：
@@ -40,9 +40,9 @@ One Port, Three Modes
 
 #### 現在（統一端口）✅
 ```bash
-開發環境: localhost:7004
-測試環境: localhost:7004
-生產環境: localhost:7004
+開發環境: localhost:7003
+測試環境: localhost:7003
+生產環境: localhost:7003
 
 # 優勢：
 - 只需記一個端口 ✅
@@ -62,11 +62,11 @@ One Port, Three Modes
 ./run dev
 
 # 打開瀏覽器
-http://localhost:7004
+http://localhost:7003
 
 # 一整天都是這個地址
 # 修改代碼 → 熱重載 → 刷新瀏覽器
-# 始終是 localhost:7004 ✅
+# 始終是 localhost:7003 ✅
 ```
 
 ### 切換環境
@@ -74,12 +74,12 @@ http://localhost:7004
 ```bash
 # 開發環境（熱重載）
 ./run dev
-http://localhost:7004  ✅
+http://localhost:7003  ✅
 
 # 生產環境（優化構建）
 ./run dev-stop
 ./run prod
-http://localhost:7004  ✅ 同一個地址！
+http://localhost:7003  ✅ 同一個地址！
 ```
 
 ### 瀏覽器書籤
@@ -87,7 +87,7 @@ http://localhost:7004  ✅ 同一個地址！
 ```
 只需要一個書籤：
 📌 智慧空間平台
-   http://localhost:7004
+   http://localhost:7003
 
 無論哪個環境，打開這個書籤就對了！
 ```
@@ -101,14 +101,14 @@ http://localhost:7004  ✅ 同一個地址！
 ```
 所有環境:
 ┌─────────────────────────────┐
-│  訪問: localhost:7004        │
+│  訪問: localhost:7003        │
 └─────────────────────────────┘
               │
               ▼
     ┌─────────────────┐
     │  Nginx (Port 80)│
     │  內部端口映射    │
-    │  7004 → 80      │
+    │  7003 → 80      │
     └─────────────────┘
          ├─────┬─────┐
          │     │     │
@@ -119,13 +119,13 @@ http://localhost:7004  ✅ 同一個地址！
 ### 環境差異
 
 ```
-開發環境 (7004):
+開發環境 (7003):
 ├─ Nginx → 前端 Vite (熱重載)
 ├─ Nginx → 後端 Go (熱重載)
 ├─ 數據庫: 容器內訪問
 └─ 特點: 快速開發
 
-生產環境 (7004):
+生產環境 (7003):
 ├─ Nginx → 前端 dist (構建後)
 ├─ Nginx → 後端 binary (優化後)
 ├─ 數據庫: 容器內訪問（隱藏）
@@ -143,15 +143,15 @@ http://localhost:7004  ✅ 同一個地址！
 ```bash
 # 開發新功能
 ./run dev
-# 打開 http://localhost:7004
+# 打開 http://localhost:7003
 
 # 修改代碼...
 vim internal/ai/service.go
 
-# 刷新瀏覽器 (還是 7004)
+# 刷新瀏覽器 (還是 7003)
 # 看到效果 ✅
 
-# 一整天都是 7004
+# 一整天都是 7003
 # 完全不用記其他端口
 ```
 
@@ -164,8 +164,8 @@ vim internal/ai/service.go
 # 生產環境驗證
 ./run prod
 
-# 打開瀏覽器 (還是 7004)
-http://localhost:7004
+# 打開瀏覽器 (還是 7003)
+http://localhost:7003
 
 # 地址沒變！✅
 # 只是內部變成了優化構建
@@ -179,7 +179,7 @@ git clone ...
 ./run prod
 
 # 告訴客戶訪問：
-"請打開 http://localhost:7004"
+"請打開 http://localhost:7003"
 
 # 簡單明瞭！✅
 ```
@@ -190,8 +190,8 @@ git clone ...
 # GitHub Actions
 test:
   - run: ./run prod
-  - run: curl http://localhost:7004/health
-  # 所有測試都用 7004 ✅
+  - run: curl http://localhost:7003/health
+  # 所有測試都用 7003 ✅
 ```
 
 ---
@@ -202,7 +202,7 @@ test:
 
 ```bash
 # .env 檔案
-PORT=7004  # 就這一個！
+PORT=7003  # 就這一個！
 
 # 所有環境都讀這個變數
 ```
@@ -213,17 +213,17 @@ PORT=7004  # 就這一個！
 # 開發環境
 nginx:
   ports:
-    - "${PORT:-7004}:80"  ✅
+    - "${PORT:-7003}:80"  ✅
 
 # 測試環境
 nginx:
   ports:
-    - "${PORT:-7004}:80"  ✅
+    - "${PORT:-7003}:80"  ✅
 
 # 生產環境
 nginx:
   ports:
-    - "${PORT:-7004}:80"  ✅
+    - "${PORT:-7003}:80"  ✅
 
 # 全部統一！
 ```
@@ -257,7 +257,7 @@ fetch('/api/v1/health')  ✅
 
 ## ⚡ 端口衝突處理
 
-### 如果 7004 被佔用？
+### 如果 7003 被佔用？
 
 ```bash
 # 方法 1: 修改 .env
@@ -267,11 +267,11 @@ echo "PORT=7005" > .env
 PORT=7005 ./run dev
 
 # 方法 3: 找出佔用進程
-sudo lsof -i :7004
+sudo lsof -i :7003
 # 殺掉佔用的進程
 ```
 
-### 為什麼選擇 7004？
+### 為什麼選擇 7003？
 
 1. **不常用** - 不會和常見服務衝突
 2. **易記** - 700X 系列
@@ -286,16 +286,16 @@ sudo lsof -i :7004
 
 ```bash
 # 1. 始終使用統一端口
-http://localhost:7004  ✅
+http://localhost:7003  ✅
 
 # 2. 書籤只存一個
-📌 http://localhost:7004  ✅
+📌 http://localhost:7003  ✅
 
 # 3. 配置只寫一份
-PORT=7004  ✅
+PORT=7003  ✅
 
 # 4. 文檔只說一個端口
-"訪問 localhost:7004"  ✅
+"訪問 localhost:7003"  ✅
 ```
 
 ### DON'T ❌
@@ -303,7 +303,7 @@ PORT=7004  ✅
 ```bash
 # 1. 不要為不同環境設不同端口
 DEV_PORT=3000  ❌
-TEST_PORT=7004  ❌
+TEST_PORT=7003  ❌
 PROD_PORT=8080  ❌
 
 # 2. 不要直接訪問內部端口
@@ -323,24 +323,24 @@ fetch('http://localhost:8080/api')  ❌
 ```bash
 # ✅ 開發環境
 ./run dev
-curl http://localhost:7004/health
+curl http://localhost:7003/health
 # 應返回 200
 
 # ✅ 生產環境
 ./run dev-stop && ./run prod
-curl http://localhost:7004/health
+curl http://localhost:7003/health
 # 應返回 200
 
 # ✅ 前端
-open http://localhost:7004
+open http://localhost:7003
 # 應正常顯示
 
 # ✅ API
-curl http://localhost:7004/api/v1/locations
+curl http://localhost:7003/api/v1/locations
 # 應返回數據
 
 # ✅ WebSocket
-wscat -c ws://localhost:7004/ws
+wscat -c ws://localhost:7003/ws
 # 應連接成功
 ```
 
@@ -359,16 +359,16 @@ wscat -c ws://localhost:7004/ws
 ### 統一端口三大原則
 
 ```
-1. 簡單 - 只記一個端口 (7004)
+1. 簡單 - 只記一個端口 (7003)
 2. 一致 - 所有環境相同
 3. 透明 - 用戶無感知切換
 ```
 
 ### 黃金法則
 
-> **7004 是你的唯一端口**
+> **7003 是你的唯一端口**
 >
-> **開發、生產，永遠都是 7004**
+> **開發、生產，永遠都是 7003**
 
 ---
 

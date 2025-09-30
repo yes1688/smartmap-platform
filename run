@@ -57,7 +57,7 @@ ${Y}📚 範例${NC}
   ./run test-run     # 運行測試
 
 ${Y}📍 訪問地址${NC}
-  ${B}統一端口: http://localhost:7004${NC}
+  ${B}統一端口: http://localhost:7003${NC}
   （開發和生產環境都使用相同端口）
 
 EOF
@@ -68,7 +68,7 @@ dev_start() {
     echo -e "${G}🔧 啟動開發環境（熱重載）...${NC}"
     podman-compose -f podman-compose.dev.yml up -d
     echo -e "${G}✅ 開發環境已啟動${NC}"
-    echo -e "${B}訪問: http://localhost:7004${NC}"
+    echo -e "${B}訪問: http://localhost:7003${NC}"
 }
 
 dev_stop() {
@@ -99,7 +99,7 @@ prod_start() {
     podman-compose --profile prod up -d
 
     echo -e "${G}✅ 生產環境已啟動${NC}"
-    echo -e "${B}訪問: http://localhost:7004${NC}"
+    echo -e "${B}訪問: http://localhost:7003${NC}"
     echo -e "${Y}💡 等待 30 秒讓服務完全啟動...${NC}"
 }
 

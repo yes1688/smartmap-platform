@@ -47,7 +47,7 @@ cp .env.example .env
 
 ### 訪問地址
 
-**所有環境統一使用**: http://localhost:7004
+**所有環境統一使用**: http://localhost:7003
 
 | 環境 | 說明 | 特點 |
 |-----|------|-----|
@@ -55,12 +55,12 @@ cp .env.example .env
 | 生產環境 | `./run prod` | 優化構建 🚀 |
 
 **統一路由結構**：
-- 前端應用：`http://localhost:7004/`
-- API 端點：`http://localhost:7004/api/v1`
-- WebSocket：`ws://localhost:7004/ws`
-- 健康檢查：`http://localhost:7004/health`
+- 前端應用：`http://localhost:7003/`
+- API 端點：`http://localhost:7003/api/v1`
+- WebSocket：`ws://localhost:7003/ws`
+- 健康檢查：`http://localhost:7003/health`
 
-✅ **無論哪個環境，永遠都是 7004！**
+✅ **無論哪個環境，永遠都是 7003！**
 
 ## 📋 管理指令
 

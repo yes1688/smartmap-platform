@@ -132,7 +132,7 @@ services:
     image: docker.io/nginx:alpine
     container_name: spatial-nginx
     ports:
-      - "${PORT:-7004}:80"  # 統一端口 7004
+      - "${PORT:-7003}:80"  # 統一端口 7003
     volumes:
       - ./containers/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./web/dist:/usr/share/nginx/html:ro

@@ -23,11 +23,11 @@
 
 ### 統一端口策略
 
-**所有環境統一使用 `7004` 端口**
+**所有環境統一使用 `7003` 端口**
 
 ```
-開發環境: http://localhost:7004
-生產環境: http://localhost:7004
+開發環境: http://localhost:7003
+生產環境: http://localhost:7003
 
 一個端口，零配置切換！
 ```
@@ -59,9 +59,9 @@ podman-compose -f podman-compose.dev.yml up -d
 ```
 
 ### 訪問地址
-- **統一入口**: http://localhost:7004
-- **API**: http://localhost:7004/api/v1
-- **WebSocket**: ws://localhost:7004/ws
+- **統一入口**: http://localhost:7003
+- **API**: http://localhost:7003/api/v1
+- **WebSocket**: ws://localhost:7003/ws
 
 ### 適用場景
 - 本機開發新功能
@@ -71,7 +71,7 @@ podman-compose -f podman-compose.dev.yml up -d
 ### 內部架構
 
 ```
-localhost:7004
+localhost:7003
     ↓
 Nginx (容器內 port 80)
     ├─→ / → Vite Dev Server (熱重載)
@@ -108,9 +108,9 @@ podman-compose --profile prod up -d
 ```
 
 ### 訪問地址
-- **統一入口**: http://localhost:7004（與開發環境相同！）
-- **API**: http://localhost:7004/api/v1
-- **WebSocket**: ws://localhost:7004/ws
+- **統一入口**: http://localhost:7003（與開發環境相同！）
+- **API**: http://localhost:7003/api/v1
+- **WebSocket**: ws://localhost:7003/ws
 
 ### 適用場景
 - 正式部署
@@ -121,7 +121,7 @@ podman-compose --profile prod up -d
 ### 內部架構
 
 ```
-localhost:7004
+localhost:7003
     ↓
 Nginx (容器內 port 80)
     ├─→ / → 前端 dist (構建後的靜態文件)
@@ -143,7 +143,7 @@ Nginx (容器內 port 80)
 ./run prod
 
 # 3. 打開瀏覽器（地址不變！）
-open http://localhost:7004
+open http://localhost:7003
 ```
 
 ### 從生產切換到開發
@@ -156,13 +156,13 @@ open http://localhost:7004
 ./run dev
 
 # 3. 打開瀏覽器（地址不變！）
-open http://localhost:7004
+open http://localhost:7003
 ```
 
 ### 同時運行？❌
 
 **不建議同時運行兩個環境**，因為：
-- 端口衝突（都使用 7004）
+- 端口衝突（都使用 7003）
 - 資源消耗
 - 容易混淆
 
@@ -179,7 +179,7 @@ open http://localhost:7004
 # 2. 開發整天
 # - 修改代碼
 # - 瀏覽器自動刷新
-# - 始終訪問 localhost:7004
+# - 始終訪問 localhost:7003
 
 # 3. 晚上關機
 ./run dev-stop
@@ -193,7 +193,7 @@ open http://localhost:7004
 
 # 2. 驗證生產構建
 ./run prod
-open http://localhost:7004
+open http://localhost:7003
 
 # 3. 測試通過
 ./run prod-stop
@@ -263,7 +263,7 @@ git push
 ### Q2: 為什麼統一端口？
 
 **優點**：
-1. **簡單** - 只需記住 7004
+1. **簡單** - 只需記住 7003
 2. **一致** - 所有環境相同
 3. **零配置** - 切換環境無需修改配置
 4. **防錯** - 不會訪問錯誤端口
@@ -304,10 +304,10 @@ cp .env.example .env
 ./run prod
 
 # 訪問
-open http://localhost:7004
+open http://localhost:7003
 ```
 
-### Q6: 端口 7004 被佔用怎麼辦？
+### Q6: 端口 7003 被佔用怎麼辦？
 
 ```bash
 # 方法 1: 修改 .env
@@ -317,7 +317,7 @@ echo "PORT=7005" > .env
 PORT=7005 ./run dev
 
 # 方法 3: 找出佔用進程
-sudo lsof -i :7004
+sudo lsof -i :7003
 ```
 
 ### Q7: 如何查看運行狀態？
@@ -352,7 +352,7 @@ sudo lsof -i :7004
 
 3. **只記一個端口**
    ```
-   http://localhost:7004
+   http://localhost:7003
    ```
 
 4. **使用統一腳本**

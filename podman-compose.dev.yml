@@ -75,7 +75,7 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       - VITE_API_BASE_URL=/api/v1
-      - VITE_WS_URL=ws://localhost:${PORT:-7004}/ws
+      - VITE_WS_URL=ws://localhost:${PORT:-7003}/ws
       - VITE_SPEECH_EAR_URL=http://localhost:3001
     volumes:
       - ./web/src:/app/src:ro  # 源代碼熱重載
@@ -101,7 +101,7 @@ services:
     image: docker.io/nginx:alpine
     container_name: spatial-nginx-dev
     ports:
-      - "${PORT:-7004}:80"  # 統一端口 7004
+      - "${PORT:-7003}:80"  # 統一端口 7003
     volumes:
       - ./containers/nginx.dev.conf:/etc/nginx/nginx.conf:ro
     depends_on:
