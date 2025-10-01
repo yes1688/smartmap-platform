@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import { resolve } from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     solid(),
   ],
@@ -45,9 +45,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // 🔧 自動配置：開發環境啟用 source map，生產環境關閉（防止原始碼洩漏）
+    sourcemap: mode === 'development',
     commonjsOptions: {
       transformMixedEsModules: true,
     },
   },
-});
+}));
