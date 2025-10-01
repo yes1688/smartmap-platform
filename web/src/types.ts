@@ -190,6 +190,7 @@ export interface GameState {
   player?: Player;
   playerStats: PlayerStats;
   nearbyItems: GameItem[];
+  nearbyLocations?: LocationWithDistance[]; // Nearby POI search results
   gameSession?: GameSession;
   isGameActive: boolean;
 }
@@ -214,4 +215,31 @@ export interface WebSocketState {
   isConnected: boolean;
   reconnectAttempts: number;
   lastMessage?: WebSocketMessage;
+}
+
+// Nearby search types
+export interface LocationWithDistance {
+  id: number;
+  name: string;
+  latitude: number;
+  longitude: number;
+  category: string;
+  rating: number;
+  address?: string;
+  description?: string;
+  distance: number; // in meters
+  bearing: number;  // in degrees
+}
+
+export interface NearbySearchResult {
+  locations: LocationWithDistance[];
+  total: number;
+  radius: number;
+  center: {
+    latitude: number;
+    longitude: number;
+  };
+  source: string;
+  warning?: string;
+  aiResponse?: string;
 }

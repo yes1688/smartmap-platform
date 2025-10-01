@@ -25,6 +25,7 @@ const [gameState, setGameState] = createStore<GameState>({
     lastPlayed: undefined,
   },
   nearbyItems: [],
+  nearbyLocations: [],
   gameSession: undefined,
   isGameActive: false,
 });
@@ -193,6 +194,57 @@ export const gameActions = {
 
     console.log(`🎮 Updated player position: ${latitude}, ${longitude}`);
   },
+
+  // Search nearby locations (triggered by voice command)
+  async searchNearbyLocations(command: string) {
+    if (!gameState.player) return null;
+
+    try {
+      const response = await fetch(`${CONFIG.api.baseUrl}/api/v1/voice/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command,
+          playerId: gameState.player.id,
+          lat: gameState.player.latitude,
+          lng: gameState.player.longitude,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.success && data.intentType === 'search' && data.nearbyResults) {
+          // Update nearby locations in store
+          setGameState('nearbyLocations', data.nearbyResults.locations);
+
+          // Log AI response
+          if (data.aiResponse) {
+            console.log('🤖 AI Response:', data.aiResponse);
+            addActivity(data.aiResponse);
+          }
+
+          return data.nearbyResults;
+        } else if (data.intentType === 'move' && data.movement) {
+          // Handle move intent
+          if (data.movement.success) {
+            console.log('🚶 Moving to location:', data.movement);
+            addActivity(data.aiResponse || '正在移動...');
+          }
+          return data;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to search nearby locations:', error);
+    }
+
+    return null;
+  },
+
+  // Clear nearby locations
+  clearNearbyLocations() {
+    setGameState('nearbyLocations', []);
+  },
 };
 
 // Helper functions
@@ -325,6 +377,9 @@ export const gameComputed = {
   get nearbyItems() {
     return gameState.nearbyItems;
   },
+  get nearbyLocations() {
+    return gameState.nearbyLocations || [];
+  },
   get isGameActive() {
     return gameState.isGameActive;
   },
@@ -342,4 +397,7 @@ export const gameStore = {
   ...gameComputed,
   player: gameComputed.currentPlayer,
 };
+
+// Export setGameState for direct state updates
+export { setGameState };
 

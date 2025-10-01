@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -77,32 +80,129 @@ type APIError struct {
 
 // Rate limiter for AI requests
 type AIRateLimiter struct {
-	lastRequest time.Time
-	mu          sync.Mutex
-	minInterval time.Duration
+	users          map[string]*userRateLimit
+	mu             sync.RWMutex
+	dailyLimit     int
+	warningPercent float64 // 警告閾值百分比
 }
 
-func NewAIRateLimiter(rpm int) *AIRateLimiter {
-	minInterval := time.Minute / time.Duration(rpm)
-	return &AIRateLimiter{
-		minInterval: minInterval,
+type userRateLimit struct {
+	requests    []time.Time
+	dailyCount  int
+	lastReset   time.Time
+	lastCleanup time.Time
+}
+
+func NewAIRateLimiter(dailyLimit int) *AIRateLimiter {
+	limiter := &AIRateLimiter{
+		users:          make(map[string]*userRateLimit),
+		dailyLimit:     dailyLimit,
+		warningPercent: 0.8, // 80% 時警告
+	}
+
+	// Cleanup old users every hour
+	go limiter.cleanupUsers()
+
+	return limiter
+}
+
+func (r *AIRateLimiter) cleanupUsers() {
+	for {
+		time.Sleep(1 * time.Hour)
+		r.mu.Lock()
+		now := time.Now()
+		for userID, limit := range r.users {
+			// Remove users inactive for more than 7 days
+			if now.Sub(limit.lastCleanup) > 7*24*time.Hour {
+				delete(r.users, userID)
+			}
+		}
+		r.mu.Unlock()
 	}
 }
 
 func (r *AIRateLimiter) Allow() (bool, time.Duration) {
+	allowed, remaining, resetTime := r.AllowUser("global")
+	_ = remaining // Ignore remaining for global
+	waitDuration := time.Until(resetTime)
+	return allowed, waitDuration
+}
+
+// AllowUser returns (allowed, remaining, resetTime)
+func (r *AIRateLimiter) AllowUser(userID string) (bool, int, time.Time) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	now := time.Now()
-	timeSinceLastRequest := now.Sub(r.lastRequest)
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	nextMidnight := midnight.Add(24 * time.Hour)
 
-	if timeSinceLastRequest >= r.minInterval {
-		r.lastRequest = now
-		return true, 0
+	// Get or create user rate limit
+	userLimit, exists := r.users[userID]
+	if !exists {
+		userLimit = &userRateLimit{
+			requests:    []time.Time{},
+			dailyCount:  0,
+			lastReset:   midnight,
+			lastCleanup: now,
+		}
+		r.users[userID] = userLimit
 	}
 
-	waitTime := r.minInterval - timeSinceLastRequest
-	return false, waitTime
+	// Reset daily count if it's a new day
+	if now.After(userLimit.lastReset.Add(24 * time.Hour)) {
+		userLimit.dailyCount = 0
+		userLimit.lastReset = midnight
+		userLimit.requests = []time.Time{}
+	}
+
+	// Check if user has exceeded daily limit
+	if userLimit.dailyCount >= r.dailyLimit {
+		remaining := 0
+		return false, remaining, nextMidnight
+	}
+
+	// Allow request and increment counter
+	userLimit.dailyCount++
+	userLimit.requests = append(userLimit.requests, now)
+	userLimit.lastCleanup = now
+
+	remaining := r.dailyLimit - userLimit.dailyCount
+	return true, remaining, nextMidnight
+}
+
+// GetUserUsage returns (used, remaining, total, resetTime)
+func (r *AIRateLimiter) GetUserUsage(userID string) (int, int, int, time.Time) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	now := time.Now()
+	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	nextMidnight := midnight.Add(24 * time.Hour)
+
+	userLimit, exists := r.users[userID]
+	if !exists {
+		return 0, r.dailyLimit, r.dailyLimit, nextMidnight
+	}
+
+	// Reset if it's a new day
+	if now.After(userLimit.lastReset.Add(24 * time.Hour)) {
+		return 0, r.dailyLimit, r.dailyLimit, nextMidnight
+	}
+
+	used := userLimit.dailyCount
+	remaining := r.dailyLimit - used
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return used, remaining, r.dailyLimit, nextMidnight
+}
+
+// ShouldWarn checks if user should receive a warning
+func (r *AIRateLimiter) ShouldWarn(userID string) bool {
+	used, _, total, _ := r.GetUserUsage(userID)
+	return float64(used)/float64(total) >= r.warningPercent
 }
 
 func NewService() *Service {
@@ -126,19 +226,31 @@ func NewService() *Service {
 		provider = ProviderOllama
 	}
 
-	// Initialize rate limiter
-	rpm := 60 // Default to 60 requests per minute for Ollama
-	if provider == ProviderOpenRouter {
-		rpm = 1 // OpenRouter free tier limit
+	// Initialize rate limiter with daily limit
+	dailyLimit := 15 // Default daily limit
+	if dailyLimitStr := os.Getenv("AI_DAILY_LIMIT"); dailyLimitStr != "" {
+		if limit, err := strconv.Atoi(dailyLimitStr); err == nil && limit > 0 {
+			dailyLimit = limit
+		}
 	}
-	rateLimiter := NewAIRateLimiter(rpm)
+	rateLimiter := NewAIRateLimiter(dailyLimit)
 
 	service := &Service{
 		provider:         provider,
 		geocodingService: geocodingService,
 		rateLimiter:      rateLimiter,
 		client: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 30 * time.Second, // Reduced from 60s to fail faster
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+				TLSHandshakeTimeout: 10 * time.Second,
+				DialContext: (&net.Dialer{
+					Timeout:   10 * time.Second, // DNS + connection timeout
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+			},
 		},
 	}
 
@@ -175,9 +287,39 @@ func NewService() *Service {
 }
 
 func (s *Service) Chat(message, context string) (string, error) {
-	// Check rate limit
-	if allowed, waitTime := s.rateLimiter.Allow(); !allowed {
-		return "", fmt.Errorf("rate limit exceeded, please wait %v before making another request", waitTime)
+	return s.ChatWithUser("", message, context)
+}
+
+func (s *Service) ChatWithUser(userID, message, context string) (string, error) {
+	// Check rate limit per user
+	var allowed bool
+	var remaining int
+	var resetTime time.Time
+
+	if userID == "" {
+		// Fallback to global rate limit for backwards compatibility
+		var waitDuration time.Duration
+		allowed, waitDuration = s.rateLimiter.Allow()
+		_ = waitDuration
+		remaining = 0
+		resetTime = time.Now().Add(24 * time.Hour)
+	} else {
+		allowed, remaining, resetTime = s.rateLimiter.AllowUser(userID)
+	}
+
+	if !allowed {
+		hours := int(time.Until(resetTime).Hours())
+		minutes := int(time.Until(resetTime).Minutes()) % 60
+		return "", fmt.Errorf("今日使用次數已達上限 (15次)，將於 %d 小時 %d 分鐘後重置 🌙", hours, minutes)
+	}
+
+	// Log usage with warning if needed
+	if userID != "" {
+		log.Printf("🎯 用戶 %s 使用 AI 服務，剩餘次數: %d/15", userID, remaining)
+
+		if s.rateLimiter.ShouldWarn(userID) && remaining > 0 {
+			log.Printf("⚠️ 用戶 %s 即將達到每日使用上限，剩餘 %d 次", userID, remaining)
+		}
 	}
 
 	// Build the final prompt/message
@@ -352,4 +494,28 @@ func (s *Service) ProcessMovementCommand(command, playerID string, currentLocati
 		moveCmd.Confidence*100)
 
 	return s.Chat(prompt, "你是智慧空間平台的AI助理，專門幫助使用者控制虛擬兔子移動。請用台灣用語，語調親切友善。")
+}
+
+// GetUserUsageStats returns user's daily usage statistics
+func (s *Service) GetUserUsageStats(userID string) (used int, remaining int, total int, resetTime time.Time) {
+	return s.rateLimiter.GetUserUsage(userID)
+}
+
+// FormatUsageWarning generates a friendly warning message about usage limit
+func (s *Service) FormatUsageWarning(remaining int, resetTime time.Time) string {
+	if remaining == 0 {
+		hours := int(time.Until(resetTime).Hours())
+		minutes := int(time.Until(resetTime).Minutes()) % 60
+		return fmt.Sprintf("💫 今日 AI 使用次數已用完，將於 %d 小時 %d 分鐘後重置", hours, minutes)
+	}
+
+	if remaining <= 3 {
+		return fmt.Sprintf("⚠️ 提醒：今日剩餘 %d 次 AI 使用機會", remaining)
+	}
+
+	if remaining <= 5 {
+		return fmt.Sprintf("💡 小提醒：今日還剩 %d 次 AI 使用機會", remaining)
+	}
+
+	return "" // No warning needed
 }

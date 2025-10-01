@@ -1,12 +1,12 @@
 import { Component, onMount, createEffect, createSignal, onCleanup } from 'solid-js';
 import { Deck } from '@deck.gl/core';
-import { IconLayer, ScatterplotLayer } from '@deck.gl/layers';
+import { IconLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { SimpleMeshLayer } from '@deck.gl/mesh-layers';
 import { registerLoaders } from '@loaders.gl/core';
 import { OBJLoader } from '@loaders.gl/obj';
 import maplibregl from 'maplibre-gl';
-import { gameStore } from '@/stores/gameStore';
+import { gameStore, gameComputed } from '@/stores/gameStore';
 
 interface DeckGLMapProps {
   onPlayerMove: (latitude: number, longitude: number) => void;
@@ -55,7 +55,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
       };
 
       setPlayerPosition(newPosition);
-      updateCatLayer();
+      updateAllLayers();
 
       // 🌟 新增：地圖視窗跟隨兔子移動
       if (map) {
@@ -68,6 +68,29 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         });
       }
     }
+  });
+
+  // 監聽附近地點變化 - 使用 computed getter 確保響應式
+  createEffect(() => {
+    const nearbyLocations = gameComputed.nearbyLocations;
+    console.log('📍 DeckGL createEffect nearbyLocations:', nearbyLocations.length);
+    if (nearbyLocations && nearbyLocations.length > 0) {
+      console.log('📍 DeckGL detected nearby locations change:', nearbyLocations.length);
+      updateAllLayers();
+    }
+  });
+
+  // 監聽手動觸發的地圖更新事件
+  onMount(() => {
+    const handleNearbyUpdate = (event: any) => {
+      console.log('📍 收到手動地圖更新事件:', event.detail.locations.length);
+      updateAllLayers();
+    };
+    window.addEventListener('nearby-locations-updated', handleNearbyUpdate);
+
+    onCleanup(() => {
+      window.removeEventListener('nearby-locations-updated', handleNearbyUpdate);
+    });
   });
 
   // 創建精美動物圖層 (使用真實貓咪模型)
@@ -137,19 +160,117 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
     ];
   };
 
-  // 更新貓咪圖層
-  const updateCatLayer = () => {
+  // 創建附近地點圖層（使用 IconLayer 顯示標記圖標）
+  const createNearbyLocationsLayer = () => {
+    const nearbyLocations = gameComputed.nearbyLocations;
+    console.log('📍 createNearbyLocationsLayer called, locations count:', nearbyLocations.length);
+    if (!nearbyLocations || nearbyLocations.length === 0) {
+      console.log('⚠️ No nearby locations to display');
+      return [];
+    }
+
+    console.log('📍 Creating nearby location layers:', nearbyLocations.length);
+
+    // Debug: 檢查第一個地點的座標
+    if (nearbyLocations.length > 0) {
+      const first = nearbyLocations[0];
+      console.log('🔍 第一個地點座標檢查:', {
+        name: first.name,
+        latitude: first.latitude,
+        longitude: first.longitude,
+        position: [first.longitude, first.latitude, 0]
+      });
+    }
+
+    return [
+      // 🎯 使用 ScatterplotLayer 顯示實心圓點標記
+      new ScatterplotLayer({
+        id: 'nearby-locations-icons',
+        data: nearbyLocations,
+        getPosition: (d: any) => [d.longitude, d.latitude, 0],
+        getRadius: 10,  // 實心圓點半徑
+        radiusUnits: 'pixels',
+        getFillColor: [255, 50, 50, 255], // 紅色實心
+        getLineColor: [255, 255, 255, 255], // 白色外框
+        lineWidthMinPixels: 2,
+        stroked: true,
+        filled: true,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 140, 0, 255], // Hover 時變成橘色
+        onClick: (info: any) => {
+          if (info.object) {
+            console.log('📍 Clicked nearby location:', info.object.name);
+            // 在點擊時顯示詳細資訊（彈出窗或側邊欄）
+            if (props.onHistoricalSiteClick) {
+              props.onHistoricalSiteClick(info.object);
+            }
+          }
+        },
+        onHover: (info: any) => {
+          if (info.object && map) {
+            map.getCanvas().style.cursor = 'pointer';
+          } else if (map) {
+            map.getCanvas().style.cursor = '';
+          }
+        },
+        updateTriggers: {
+          getPosition: nearbyLocations.map((d: any) => [d.latitude, d.longitude])
+        }
+      }),
+
+      // 📝 文字標籤 - 簡潔版
+      new TextLayer({
+        id: 'nearby-locations-labels',
+        data: nearbyLocations,
+        getPosition: (d: any) => [d.longitude, d.latitude, 0],
+        getText: (d: any) => {
+          // 如果名稱太長，截斷並加上省略號
+          const name = d.name || '';
+          return name.length > 10 ? name.substring(0, 10) + '...' : name;
+        },
+        getSize: 12,
+        getColor: [255, 255, 255],
+        getPixelOffset: [0, -20], // 移到圖標上方（圓點較小，距離調近）
+        backgroundColor: [50, 50, 50, 200],
+        backgroundPadding: [4, 2],
+        fontFamily: '"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Apple LiGothic Medium", sans-serif',
+        fontWeight: '700',
+        characterSet: 'auto',  // 自動載入所需字符
+        fontSettings: {
+          sdf: false  // 使用非 SDF 渲染以支援中文
+        },
+        pickable: false,
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'bottom',
+        outlineWidth: 1,
+        outlineColor: [0, 0, 0, 180]
+      })
+    ];
+  };
+
+  // 更新所有圖層
+  const updateAllLayers = () => {
     if (!overlay) {
-      console.warn('⚠️ Overlay not available for cat layer update');
+      console.warn('⚠️ Overlay not available for layer update');
       return;
     }
 
-    const layers = createCatLayer();
-    overlay.setProps({ layers });
+    const catLayers = createCatLayer();
+    const nearbyLayers = createNearbyLocationsLayer();
+    const allLayers = [...catLayers, ...nearbyLayers];
 
-    console.log('🐱 Updated cat position on map:', playerPosition());
-    console.log('🐱 Updated layers count:', layers.length);
+    overlay.setProps({ layers: allLayers });
+
+    console.log('🗺️ Updated all layers:', {
+      cat: catLayers.length,
+      nearby: nearbyLayers.length,
+      total: allLayers.length
+    });
   };
+
+  // 更新貓咪圖層（保留向後兼容）
+  const updateCatLayer = updateAllLayers;
 
   onMount(() => {
     console.log('🗺️ Initializing DeckGL + MapLibre...');
@@ -173,10 +294,32 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
       map.on('load', () => {
         console.log('✅ MapLibre loaded successfully');
 
-        // 創建 Deck.gl overlay
+        // 創建 Deck.gl overlay with tooltip
         const initialLayers = createCatLayer();
         overlay = new MapboxOverlay({
-          layers: initialLayers
+          layers: initialLayers,
+          getTooltip: ({ object }: any) => {
+            if (object && object.name) {
+              return {
+                html: `<div style="
+                  background: rgba(0, 0, 0, 0.9);
+                  color: white;
+                  padding: 8px 12px;
+                  border-radius: 6px;
+                  font-size: 14px;
+                  font-weight: 600;
+                  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                  max-width: 250px;
+                  word-wrap: break-word;
+                ">${object.name}</div>`,
+                style: {
+                  backgroundColor: 'transparent',
+                  padding: '0'
+                }
+              };
+            }
+            return null;
+          }
         });
 
         map!.addControl(overlay as any);

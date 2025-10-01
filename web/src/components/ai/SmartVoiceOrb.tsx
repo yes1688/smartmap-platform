@@ -1,6 +1,6 @@
 import { Component, createSignal, onMount, onCleanup } from 'solid-js';
 import { CONFIG } from '@/config';
-import { gameStore, gameActions } from '@/stores/gameStore';
+import { gameStore, gameActions, setGameState } from '@/stores/gameStore';
 import { startDeepAnalysis, BrowserCapabilityAnalyzer } from '@/utils/SpeechAnalyzer';
 import { startUltimateAnalysis } from '@/utils/DeepNetworkAnalyzer';
 
@@ -197,6 +197,109 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     setIsProcessing(true);
 
     try {
+      // First, try the new voice command endpoint for intelligent intent parsing
+      const voiceResponse = await fetch(`${CONFIG.api.baseUrl}/voice/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          command: text,
+          playerId: gameStore.currentPlayer?.id || 'default_player',
+          lat: gameStore.currentPlayer?.latitude,
+          lng: gameStore.currentPlayer?.longitude,
+        }),
+      });
+
+      if (voiceResponse.ok) {
+        const data = await voiceResponse.json();
+
+        // Display usage warning if present
+        if (data.usageStats?.warning) {
+          console.log('⚠️ AI 使用提醒:', data.usageStats.warning);
+          setPreviewText(data.usageStats.warning);
+          // Show warning for 3 seconds before showing main response
+          setTimeout(() => {
+            setPreviewText('');
+          }, 3000);
+        }
+
+        // Log usage stats
+        if (data.usageStats) {
+          console.log(`📊 AI 使用統計: ${data.usageStats.used}/${data.usageStats.total} (剩餘 ${data.usageStats.remaining})`);
+        }
+
+        // Handle different intent types
+        if (data.success && data.intentType === 'search' && data.nearbyResults) {
+          // Nearby search result
+          console.log('📍 附近搜尋結果:', data.nearbyResults);
+          console.log('📍 附近地點資料:', data.nearbyResults.locations);
+
+          // Update gameStore to show red markers on map
+          const locations = data.nearbyResults.locations || [];
+          setGameState('nearbyLocations', locations);
+          console.log('🗺️ 已更新地圖標記:', locations.length, '個地點');
+
+          // Debug: 檢查第一個地點的資料結構
+          if (locations.length > 0) {
+            console.log('🔍 第一個地點資料:', locations[0]);
+            console.log('🔍 座標:', {
+              latitude: locations[0].latitude,
+              longitude: locations[0].longitude,
+              name: locations[0].name
+            });
+          }
+
+          // Force trigger map update by dispatching custom event
+          setTimeout(() => {
+            console.log('🔄 手動觸發地圖更新事件');
+            window.dispatchEvent(new CustomEvent('nearby-locations-updated', {
+              detail: { locations }
+            }));
+          }, 100);
+
+          setAiResponse(data.aiResponse || `找到 ${data.nearbyResults.total} 個結果`);
+          setShowAiResponse(true);
+          console.log('🤖 AI 回應:', data.aiResponse);
+        } else if (data.intentType === 'move' && data.movement) {
+          // Movement command
+          setAiResponse(data.aiResponse || '正在移動...');
+          setShowAiResponse(true);
+          console.log('🚶 移動指令:', data.movement);
+
+          // Trigger movement callback
+          if (props.onMovementResponse) {
+            props.onMovementResponse(data);
+          }
+
+          // Update player position in gameStore
+          if (data.movement.success && data.movement.newPosition) {
+            gameActions.setPlayerPosition(
+              data.movement.newPosition.latitude,
+              data.movement.newPosition.longitude
+            );
+            console.log('✅ 玩家位置已更新:', data.movement.newPosition);
+          }
+        } else {
+          // Other intents (describe, recommend)
+          setAiResponse(data.aiResponse || '已處理');
+          setShowAiResponse(true);
+          console.log('🤖 AI 回應:', data.aiResponse);
+        }
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // Handle voice command errors
+      if (voiceResponse.status === 429) {
+        // Rate limit error
+        const errorData = await voiceResponse.json();
+        setAiResponse(errorData.message || '⏳ AI 服務繁忙，請稍候再試');
+        setShowAiResponse(true);
+        setIsProcessing(false);
+        return;
+      }
+
+      // Fallback to regular AI chat if voice command fails
       const response = await fetch(`${CONFIG.api.baseUrl}${CONFIG.api.endpoints.aiChat}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

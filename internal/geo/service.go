@@ -26,6 +26,11 @@ func NewService(db *gorm.DB) *Service {
 	}
 }
 
+// GetGeocoding returns the geocoding service
+func (s *Service) GetGeocoding() *GeocodingService {
+	return s.geocoding
+}
+
 func (s *Service) GetAllLocations() ([]Location, error) {
 	var locations []Location
 	err := s.db.Find(&locations).Error

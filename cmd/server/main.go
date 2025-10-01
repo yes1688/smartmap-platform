@@ -266,6 +266,7 @@ func setupRouter(services *Services) *gin.Engine {
 		aiGroup.Use(middleware.GeocodingRateLimit())
 		{
 			aiGroup.POST("/voice/process", apiHandler.ProcessVoice)
+			aiGroup.POST("/voice/command", apiHandler.ProcessVoiceCommand) // Unified voice command handler
 			aiGroup.POST("/ai/chat", apiHandler.ChatWithAI)
 			aiGroup.POST("/game/move", apiHandler.MovePlayer)
 			aiGroup.POST("/places/search", apiHandler.SearchPlace) // Google Places API endpoint
