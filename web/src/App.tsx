@@ -8,6 +8,7 @@ import SpeechEarVoiceOrb from '@/components/ai/SpeechEarVoiceOrb';
 import SmartSearch from '@/components/ai/SmartSearch';
 import SmartContextPanel from '@/components/ai/SmartContextPanel';
 import OneIntelligenceSystem from '@/components/ai/OneIntelligenceSystem';
+import NearbyLocationsList from '@/components/ai/NearbyLocationsList';
 import HistoricalSitePanel from '@/components/game/HistoricalSitePanel';
 import LoadingOverlay from '@/components/layout/LoadingOverlay';
 import { WelcomeModal } from '@/components/layout/WelcomeModal';
@@ -382,6 +383,17 @@ const App: Component = () => {
 
             {/* 🚀 新智能界面系統 - 革命性重構 */}
 
+            {/* 附近景點列表 - 左側清單 */}
+            <div class="pointer-events-auto">
+              <NearbyLocationsList
+                onLocationClick={(location) => {
+                  console.log('📍 點擊景點:', location.name);
+                  // 可選：移動到該地點
+                  handleQuickMove(location.name);
+                }}
+              />
+            </div>
+
             {/* 智能語音球 - 雙系統支援 */}
             <div class="pointer-events-auto">
               <Show when={voiceSystem() === 'chrome'}>
@@ -404,14 +416,15 @@ const App: Component = () => {
               </Show>
             </div>
 
-            {/* Floating Action Button (Mobile) */}
-            <div class="lg:hidden fixed bottom-6 right-6 z-40 pointer-events-auto">
+            {/* Floating Action Button (Mobile) - 移到左下避免與語音球衝突 */}
+            <div class="lg:hidden fixed bottom-24 left-4 z-40 pointer-events-auto">
               <button
-                onClick={handleToggleGamePanel}
-                class="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full shadow-xl flex items-center justify-center text-white animate-scale-in"
+                onClick={handleToggleOneSystem}
+                class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full shadow-xl flex items-center justify-center text-white animate-scale-in"
+                title="AI 助手"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                 </svg>
               </button>
             </div>

@@ -16,10 +16,25 @@
     text-rendering: optimizeLegibility;
     line-height: 1.5;
     color: #1a1a1a;
+    /* 手機版觸控優化 */
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
   }
 
   button {
     font-family: inherit;
+    /* 防止按鈕被選取 */
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* 手機版地圖區域防止選取 */
+  #map-container {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 }
 

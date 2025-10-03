@@ -6,8 +6,17 @@ export interface WelcomeModalProps {
 }
 
 export function WelcomeModal(props: WelcomeModalProps) {
-  const handleClose = () => {
-    // 直接關閉彈窗，不記住用戶狀態
+  const handleClose = async () => {
+    // 請求麥克風權限
+    try {
+      console.log('🎤 請求麥克風權限...');
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('✅ 麥克風權限已獲得');
+    } catch (error) {
+      console.warn('⚠️ 無法獲得麥克風權限:', error);
+    }
+
+    // 關閉彈窗
     props.onClose();
   };
 
@@ -18,30 +27,58 @@ export function WelcomeModal(props: WelcomeModalProps) {
         {/* 彈窗主體 */}
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
           {/* 標題區域 */}
-          <div class="bg-gradient-to-r from-emerald-500 to-teal-500 p-6 text-center">
-            <div class="text-3xl mb-2">🎮</div>
-            <h2 class="text-xl font-bold text-white mb-1">溫馨提醒</h2>
-            <p class="text-emerald-100 text-sm">歡迎來到智慧空間平台</p>
+          <div class="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-center">
+            <div class="text-4xl mb-2">🐱</div>
+            <h2 class="text-xl font-bold text-white mb-1">歡迎來到智慧空間平台</h2>
+            <p class="text-blue-100 text-sm">AI 語音控制 × 3D 地圖探索</p>
           </div>
 
           {/* 內容區域 */}
           <div class="p-6 space-y-4">
-            <div class="text-center text-gray-700 leading-relaxed">
-              <p class="text-base mb-4">
-                🤖 <strong>本系統與AI結合</strong>
-              </p>
-              <p class="text-sm text-gray-600 mb-4">
-                過程中請用AI<br />
-                <span class="font-semibold text-emerald-600">「移動人物」</span><br />
-                來完成一場遊戲
-              </p>
+            {/* 功能說明 */}
+            <div class="space-y-3">
+              <div class="flex items-start space-x-3 text-sm">
+                <div class="text-2xl">🎤</div>
+                <div>
+                  <div class="font-semibold text-gray-800">語音控制</div>
+                  <div class="text-gray-600 text-xs">按住右下角語音球說話</div>
+                </div>
+              </div>
 
-              <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-3 mb-4">
-                <p class="text-xs text-emerald-700 mb-2">💡 <strong>快速開始範例：</strong></p>
-                <div class="space-y-1 text-xs text-emerald-600">
-                  <div>• "移動兔子到台北101"</div>
-                  <div>• "移動到我的位置"</div>
-                  <div>• "讓兔子做跳躍動作"</div>
+              <div class="flex items-start space-x-3 text-sm">
+                <div class="text-2xl">🐱</div>
+                <div>
+                  <div class="font-semibold text-gray-800">移動小貓咪</div>
+                  <div class="text-gray-600 text-xs">在 3D 地圖上自由探索台灣</div>
+                </div>
+              </div>
+
+              <div class="flex items-start space-x-3 text-sm">
+                <div class="text-2xl">📍</div>
+                <div>
+                  <div class="font-semibold text-gray-800">探索景點</div>
+                  <div class="text-gray-600 text-xs">搜尋附近景點，左側顯示清單</div>
+                </div>
+              </div>
+            </div>
+
+            {/* 快速開始範例 */}
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-xl p-4">
+              <p class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <span>💡</span> 快速開始範例
+              </p>
+              <div class="space-y-2">
+                <div class="bg-white rounded-lg p-2 text-xs text-gray-700 border border-blue-100">
+                  <span class="font-semibold text-blue-600">移動：</span>
+                  「移動小貓咪到台北101」
+                </div>
+                <div class="bg-white rounded-lg p-2 text-xs text-gray-700 border border-blue-100">
+                  <span class="font-semibold text-purple-600">搜尋：</span>
+                  「附近有什麼景點」
+                </div>
+                <div class="bg-white rounded-lg p-2 text-xs text-gray-700 border border-blue-100">
+                  <span class="font-semibold text-rose-600">探索：</span>
+                  「搜尋台北101附近的美食」
                 </div>
               </div>
             </div>
@@ -49,14 +86,14 @@ export function WelcomeModal(props: WelcomeModalProps) {
             <div class="text-center">
               <button
                 onClick={handleClose}
-                class="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-medium px-8 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium px-8 py-3 rounded-full transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
               >
-                開始遊戲 🚀
+                開始探索 🚀
               </button>
             </div>
 
             <p class="text-xs text-gray-400 text-center">
-              點擊開始後，您可以在右下角與AI對話控制兔子玩偶
+              點擊開始後，您可以按住右下角語音球與AI對話
             </p>
           </div>
         </div>

@@ -22,6 +22,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   let chunks: Blob[] = [];
   let deepAnalysis: any = null;
   let ultimateAnalyzer: any = null;
+  let finalTranscriptText = ''; // 儲存最終識別文字
 
   // 語音識別設置
   onMount(() => {
@@ -82,16 +83,31 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         } else if (finalTranscript) {
           setInterimText('');
           setPreviewText(`💬 ${finalTranscript}`);
+          finalTranscriptText = finalTranscript; // 儲存最終識別文字
         }
 
         if (finalTranscript) {
           console.log('✅ 最終識別結果:', finalTranscript);
-          processVoiceCommand(finalTranscript);
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('🏁 語音識別結束 (onend 事件)');
+        console.log('📝 finalTranscriptText:', finalTranscriptText);
+        // 在識別結束時處理語音指令
+        if (finalTranscriptText) {
+          console.log('✅ [onend] 處理最終識別結果:', finalTranscriptText);
+          const textToProcess = finalTranscriptText;
+          finalTranscriptText = ''; // 先清空，避免重複處理
+          processVoiceCommand(textToProcess);
+        } else {
+          console.log('⚠️ [onend] 沒有最終識別文字');
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('❌ 語音識別錯誤:', event.error);
+        finalTranscriptText = ''; // 清空
         stopRecording();
       };
     } else {
@@ -99,11 +115,18 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     }
   });
 
-  const startRecording = async () => {
-    console.log('🎤 開始語音錄音...');
+  const startRecording = async (e?: Event) => {
+    // 防止事件傳播和默認行為
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log('🎤 開始語音錄音...', e?.type || 'unknown event');
     console.log('🔬 ===== 深度分析：語音識別啟動流程 =====');
 
     try {
+      finalTranscriptText = ''; // 重置文字
       setIsRecording(true);
       setIsActive(true);
       setPreviewText('🎤 聆聽中...');
@@ -157,8 +180,14 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     }
   };
 
-  const stopRecording = () => {
-    console.log('🛑 停止語音識別...');
+  const stopRecording = (e?: Event) => {
+    // 防止事件傳播和默認行為
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log('🛑 停止語音識別...', e?.type || 'unknown event');
     console.log('🔬 ===== 深度分析：語音識別結束 =====');
 
     setIsRecording(false);
@@ -167,6 +196,18 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     if (recognition) {
       recognition.stop();
       console.log('🚀 webkitSpeechRecognition.stop() 已調用');
+      console.log('⏳ 等待 onend 事件處理語音指令...');
+
+      // 備用機制：如果 500ms 後 onend 還沒觸發，手動處理
+      setTimeout(() => {
+        if (finalTranscriptText) {
+          console.log('⚠️ [備用機制] onend 可能未觸發，手動處理語音指令');
+          console.log('📝 finalTranscriptText:', finalTranscriptText);
+          const textToProcess = finalTranscriptText;
+          finalTranscriptText = ''; // 清空
+          processVoiceCommand(textToProcess);
+        }
+      }, 500);
     }
 
     // 輸出深度分析結果
@@ -384,7 +425,14 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   });
 
   return (
-    <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+    <div
+      class="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-3"
+      style={{
+        "user-select": "none",
+        "-webkit-user-select": "none",
+        "-webkit-touch-callout": "none"
+      }}
+    >
       {/* AI 回應訊息氣泡 - 較大且更突出 */}
       {showAiResponse() && aiResponse() && (
         <div class="bg-gradient-to-r from-blue-600/90 to-purple-600/90 backdrop-blur-md text-white px-4 py-3 rounded-xl text-sm max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-500 shadow-lg border border-white/20">
@@ -410,13 +458,19 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       )}
 
       {/* 智能語音球 */}
-      <div class="relative">
+      <div class="relative" style={{
+        "user-select": "none",
+        "-webkit-user-select": "none",
+        "-webkit-touch-callout": "none"
+      }}>
         <button
           onMouseDown={startRecording}
           onMouseUp={stopRecording}
+          onMouseLeave={stopRecording}
           onTouchStart={startRecording}
           onTouchEnd={stopRecording}
-          class={`group relative w-16 h-16 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+          onTouchCancel={stopRecording}
+          class={`group relative w-16 h-16 lg:w-16 lg:h-16 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 ${
             isRecording()
               ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-2xl animate-pulse'
               : isProcessing()
@@ -425,7 +479,13 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           }`}
           style={{
             "backdrop-filter": "blur(20px)",
-            "border": "1px solid rgba(255, 255, 255, 0.2)"
+            "border": "1px solid rgba(255, 255, 255, 0.2)",
+            "touch-action": "none",
+            "-webkit-tap-highlight-color": "transparent",
+            "user-select": "none",
+            "-webkit-user-select": "none",
+            "-webkit-touch-callout": "none",
+            "-webkit-user-drag": "none"
           }}
         >
           {/* 動態波紋效果 */}
