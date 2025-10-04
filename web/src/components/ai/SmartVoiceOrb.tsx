@@ -100,6 +100,10 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         console.log('📝 previewText:', previewText());
         console.log('📝 isProcessingCommand:', isProcessingCommand);
 
+        // 立即重置錄音狀態
+        setIsRecording(false);
+        setInterimText('');
+
         // 獲取要處理的文字：優先使用 finalTranscriptText，否則從 previewText 提取
         let textToProcess = finalTranscriptText;
         if (!textToProcess && previewText()) {
@@ -114,21 +118,45 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           isProcessingCommand = true;
           finalTranscriptText = ''; // 清空避免重複處理
           processVoiceCommand(textToProcess).finally(() => {
-            console.log('✅ 指令處理完成，重置 isProcessingCommand');
+            console.log('✅ 指令處理完成，重置所有狀態');
             isProcessingCommand = false;
+            // 延遲隱藏並重置所有狀態，讓用戶看到處理結果
+            setTimeout(() => {
+              setIsActive(false);
+              setPreviewText('');
+              setShowAiResponse(false);
+              setAiResponse('');
+            }, 2000);
           });
         } else {
           console.log('⚠️ [onend] 跳過處理:', {
             hasText: !!textToProcess,
             isProcessing: isProcessingCommand
           });
+          // 沒有文字或已在處理中，立即重置並隱藏
+          setIsActive(false);
+          setPreviewText('');
+          setShowAiResponse(false);
+          setAiResponse('');
         }
       };
 
       recognition.onerror = (event: any) => {
         console.error('❌ 語音識別錯誤:', event.error);
         finalTranscriptText = ''; // 清空
-        stopRecording();
+        isProcessingCommand = false; // 重置處理標記
+
+        setIsRecording(false);
+        setInterimText('');
+        setPreviewText(`❌ 語音識別錯誤: ${event.error}`);
+
+        // 延遲隱藏並重置所有狀態
+        setTimeout(() => {
+          setIsActive(false);
+          setPreviewText('');
+          setShowAiResponse(false);
+          setAiResponse('');
+        }, 2000);
       };
     } else {
       console.error('❌ 瀏覽器不支援 webkitSpeechRecognition');
@@ -142,10 +170,20 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       e.stopPropagation();
     }
 
-    // 如果正在錄音，則停止
+    // 防止在處理中重複點擊
+    if (isProcessing()) {
+      console.log('⚠️ 正在處理中，請稍候...');
+      return;
+    }
+
+    // 如果正在錄音，則手動停止
     if (isRecording()) {
       console.log('🛑 手動停止錄音');
-      stopRecording();
+      if (recognition) {
+        recognition.stop();
+      }
+      setIsRecording(false);
+      setInterimText('');
       return;
     }
 
@@ -155,13 +193,17 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
 
     try {
       // 重置所有狀態
-      console.log('🔄 重置狀態: finalTranscriptText, isProcessingCommand');
+      console.log('🔄 重置狀態: finalTranscriptText, isProcessingCommand, previewText, interimText');
       finalTranscriptText = '';
       isProcessingCommand = false;
 
       setIsRecording(true);
       setIsActive(true);
+      setIsProcessing(false);
       setPreviewText('🎤 請說話...（說完會自動停止）');
+      setInterimText('');
+      setAiResponse('');
+      setShowAiResponse(false);
 
       if (recognition) {
         // 先請求麥克風權限
@@ -195,6 +237,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           console.error('❌ 麥克風權限被拒絕:', permissionError);
           setPreviewText('❌ 需要麥克風權限');
           setIsRecording(false);
+          setIsActive(true); // 保持顯示錯誤訊息
           setTimeout(() => setIsActive(false), 2000);
           return;
         }
@@ -202,56 +245,18 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         console.error('❌ 瀏覽器不支援語音識別');
         setPreviewText('❌ 瀏覽器不支援語音識別');
         setIsRecording(false);
+        setIsActive(true); // 保持顯示錯誤訊息
         setTimeout(() => setIsActive(false), 2000);
       }
     } catch (error) {
       console.error('❌ 啟動錄音失敗:', error);
       setPreviewText('❌ 錄音啟動失敗');
       setIsRecording(false);
+      setIsActive(true); // 保持顯示錯誤訊息
       setTimeout(() => setIsActive(false), 2000);
     }
   };
 
-  const stopRecording = (e?: Event) => {
-    // 防止事件傳播和默認行為
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    console.log('🛑 停止語音識別...', e?.type || 'unknown event');
-    console.log('🔬 ===== 深度分析：語音識別結束 =====');
-
-    setIsRecording(false);
-    setInterimText(''); // 清空即時識別文字
-
-    if (recognition) {
-      recognition.stop();
-      console.log('🚀 webkitSpeechRecognition.stop() 已調用');
-      console.log('⏳ 等待 onend 事件處理語音指令...');
-    }
-
-    // 輸出深度分析結果
-    if (deepAnalysis) {
-      setTimeout(() => {
-        console.log('📊 ===== 深度分析報告 =====');
-        const results = deepAnalysis.stop();
-        console.log('🔍 完整分析結果:', results);
-
-        if (results.speech.speechRelated.length > 0) {
-          console.log('🎯 發現語音相關網路請求:', results.speech.speechRelated);
-        } else {
-          console.log('🤔 未發現明顯的語音 API 請求（可能被瀏覽器隱藏）');
-        }
-
-        console.log(`🌐 語音服務提供商: ${results.speechProvider}`);
-        console.log('🔬 瀏覽器能力分析:', results.browserCapabilities);
-      }, 1000);
-    }
-
-    // 延遲隱藏，讓用戶看到處理結果
-    setTimeout(() => setIsActive(false), 2000);
-  };
 
   const processVoiceCommand = async (text: string) => {
     if (!text.trim()) return;
@@ -442,28 +447,19 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     }
   };
 
-  // 快捷鍵支持
+  // 快捷鍵支持 - 空白鍵切換錄音
   onMount(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isRecording()) {
+      if (e.code === 'Space' && !isRecording() && !isProcessing()) {
         e.preventDefault();
-        startRecording();
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && isRecording()) {
-        e.preventDefault();
-        stopRecording();
+        toggleRecording();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
 
     onCleanup(() => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
     });
   });
 
@@ -537,20 +533,33 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           {/* 中心圖標 */}
           <div class="relative z-10 w-full h-full flex items-center justify-center">
             {isProcessing() ? (
+              // 處理中 - 旋轉載入動畫
               <svg class="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             ) : (
+              // 🎤 真實麥克風造型 - 膠囊形狀 + 支架
               <svg
-                class={`w-8 h-8 text-white transition-transform duration-300 ${isRecording() ? 'scale-125' : 'group-hover:scale-110'}`}
-                fill="currentColor"
+                class={`w-10 h-10 text-white transition-all duration-300 ${isRecording() ? 'scale-125' : 'group-hover:scale-110'}`}
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
                 viewBox="0 0 24 24"
               >
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
+                {/* 麥克風膠囊主體（頂部圓弧） */}
+                <rect x="9" y="2" width="6" height="11" rx="3" fill="currentColor" opacity="0.9"/>
+
+                {/* 麥克風底部弧線（聲音檢測區域） */}
+                <path d="M 5 10 Q 5 17 12 17 Q 19 17 19 10" stroke-width="2.5" fill="none"/>
+
+                {/* 麥克風支架（垂直線） */}
+                <line x1="12" y1="17" x2="12" y2="21" stroke-width="2.5"/>
+
+                {/* 麥克風底座（橫線） */}
+                <line x1="8" y1="21" x2="16" y2="21" stroke-width="2.5"/>
               </svg>
             )}
           </div>
