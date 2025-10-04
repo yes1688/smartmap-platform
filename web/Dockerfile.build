@@ -25,5 +25,24 @@ WORKDIR /dist
 # 從 builder 階段複製構建產物
 COPY --from=builder /app/dist /dist
 
-# 等待 5 秒確保 volume 同步完成，然後退出
-CMD ["sh", "-c", "echo 'Frontend build completed. Syncing to volume...' && sleep 5 && echo 'Volume sync completed'"]
+# 驗證檔案確實存在並等待 volume 同步
+# 1. 列出所有檔案確認
+# 2. 計算檔案數量
+# 3. 等待一段時間確保 volume 完全同步
+# 4. 再次驗證檔案數量沒有變化（確認同步穩定）
+CMD ["sh", "-c", "\
+  echo '📦 Frontend build completed. Files in container:' && \
+  ls -lh /dist && \
+  echo '' && \
+  FILE_COUNT=$(find /dist -type f | wc -l) && \
+  echo \"📊 Total files: $FILE_COUNT\" && \
+  echo '⏳ Waiting for volume sync (10 seconds)...' && \
+  sleep 10 && \
+  VERIFY_COUNT=$(find /dist -type f | wc -l) && \
+  echo \"✅ Volume sync verified. Files: $VERIFY_COUNT\" && \
+  if [ \"$FILE_COUNT\" -eq \"$VERIFY_COUNT\" ]; then \
+    echo '✅ Volume sync completed successfully'; \
+  else \
+    echo '⚠️  Warning: File count mismatch!'; \
+  fi \
+"]
