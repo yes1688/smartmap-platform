@@ -41,7 +41,7 @@ export function WelcomeModal(props: WelcomeModalProps) {
                 <div class="text-2xl">🎤</div>
                 <div>
                   <div class="font-semibold text-gray-800">語音控制</div>
-                  <div class="text-gray-600 text-xs">按住右下角語音球說話</div>
+                  <div class="text-gray-600 text-xs">點擊右下角語音球說話（自動停止）</div>
                 </div>
               </div>
 
@@ -93,7 +93,7 @@ export function WelcomeModal(props: WelcomeModalProps) {
             </div>
 
             <p class="text-xs text-gray-400 text-center">
-              點擊開始後，您可以按住右下角語音球與AI對話
+              點擊開始後，您可以點擊右下角語音球與AI對話
             </p>
           </div>
         </div>
