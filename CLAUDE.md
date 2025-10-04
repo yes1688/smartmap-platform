@@ -10,9 +10,9 @@
 - 任何直接啟動 Vite 的指令
 
 **正確做法：**
-- ✅ 開發環境：`podman-compose -f podman-compose.dev.yml up`
-- ✅ 生產環境：`podman-compose up`
-- ✅ 統一容器管理：支援前後端熱重載
+- ✅ 開發環境：`make dev`
+- ✅ 生產環境：`make prod`
+- ✅ 統一使用 Makefile 管理所有操作
 
 ## 💡 Linus Torvalds 開發哲學
 
@@ -342,14 +342,22 @@ vim docs/PROJECT_INDEX.md
 
 ### 容器管理
 ```bash
+# 查看所有指令
+make help
+
 # 開發環境
-podman-compose -f podman-compose.dev.yml up -d
+make dev          # 啟動
+make dev-logs     # 查看日誌
+make dev-down     # 停止
 
-# 查看日誌
-podman-compose -f podman-compose.dev.yml logs -f
+# 生產環境
+make prod         # 啟動
+make prod-logs    # 查看日誌
+make prod-down    # 停止
 
-# 停止環境
-podman-compose -f podman-compose.dev.yml down
+# 其他
+make status       # 查看狀態
+make clean        # 清理所有
 ```
 
 ### 建立計畫

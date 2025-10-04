@@ -1,102 +1,152 @@
 # 開發指南
 
-## 前端開發
+## 🚀 快速開始
 
-### 推薦方式：容器開發
+### 使用 Makefile（推薦）
+
 ```bash
-# 啟動前端開發容器
-podman-compose up -d frontend
+# 查看所有可用指令
+make help
 
-# 查看前端日誌
-podman-compose logs -f frontend
+# 啟動開發環境（前端 + 後端 + 資料庫）
+make dev
 
-# 重啟前端容器
-podman-compose restart frontend
+# 查看開發環境日誌
+make dev-logs
 
-# 停止前端容器
-podman-compose stop frontend
+# 停止開發環境
+make dev-down
 ```
 
-### 傳統方式（僅在容器有問題時使用）
+## 📦 容器化開發
+
+### 開發環境管理
+
+所有開發操作都已容器化，**不需要在本機安裝 Go 或 Node.js**：
+
+```bash
+# 啟動完整開發環境（熱重載）
+make dev
+
+# 查看日誌
+make dev-logs
+
+# 重啟開發環境
+make dev-restart
+
+# 重新構建容器
+make dev-build
+
+# 停止開發環境
+make dev-down
+```
+
+### 生產環境管理
+
+```bash
+# 啟動生產環境（包含前端構建）
+make prod
+
+# 查看日誌
+make prod-logs
+
+# 重啟生產環境
+make prod-restart
+
+# 重新構建容器
+make prod-build
+
+# 停止生產環境
+make prod-down
+```
+
+### 其他實用指令
+
+```bash
+# 查看所有容器狀態
+make status
+
+# 構建前端靜態檔案（使用容器）
+make build-frontend
+
+# 清理所有容器和資料卷（危險！）
+make clean
+```
+
+## 🛠️ 進階操作
+
+### 直接使用 podman-compose
+
+如果需要更細粒度的控制：
+
+```bash
+# 開發環境
+podman-compose -f podman-compose.dev.yml up -d
+podman-compose -f podman-compose.dev.yml logs -f
+podman-compose -f podman-compose.dev.yml down
+
+# 生產環境
+podman-compose up -d
+podman-compose logs -f
+podman-compose down
+
+# 重新構建特定服務
+podman-compose -f podman-compose.dev.yml build backend
+podman-compose -f podman-compose.dev.yml build frontend
+```
+
+### 進入容器內部
+
+```bash
+# 進入後端容器
+podman exec -it spatial-backend-dev /bin/sh
+
+# 進入前端容器
+podman exec -it spatial-frontend-dev /bin/sh
+
+# 進入資料庫
+podman exec -it spatial-postgres-dev psql -U spatial_user -d spatial_platform_dev
+```
+
+## 🧪 測試
+
+```bash
+# 運行後端測試（在開發容器內）
+podman exec spatial-backend-dev go test ./internal/... -v -cover
+
+# 運行特定測試
+podman exec spatial-backend-dev go test ./internal/game -v
+
+# 格式化程式碼
+podman exec spatial-backend-dev go fmt ./...
+```
+
+## 📝 本機開發（不推薦）
+
+如果你真的需要在本機直接開發（不使用容器）：
+
+### 前端
 ```bash
 cd web
-
-# ⚠️ 重要：必須先關閉所有佔用 port 3000 的進程
-pkill -f "npm run dev" && pkill -f "vite"
-
-# 確保使用 port 3000，禁止自動切換端口
-PORT=3000 npm run dev
-
-# 其他前端指令
-npm run build           # 生產構建
-npm run preview         # 預覽構建結果
-npm run type-check      # TypeScript 檢查
+npm install
+npm run dev           # 開發伺服器
+npm run build         # 生產構建
+npm run type-check    # TypeScript 檢查
 ```
 
-## 後端開發
-
+### 後端
 ```bash
-# 運行開發服務器
-go run cmd/server/main.go
-
-# 構建二進制檔
-go build cmd/server/main.go
-
-# 運行測試
-go test ./...
-
-# 格式化代碼
-go fmt ./...
+go run cmd/server/main.go    # 運行開發伺服器
+go build cmd/server/main.go  # 構建二進制檔
+go test ./...                # 運行測試
+go fmt ./...                 # 格式化程式碼
 ```
 
-## 容器操作
-
-### 正常容器操作（建議使用）
-```bash
-# 啟動所有服務
-podman-compose up -d
-
-# 僅啟動前端開發服務器
-podman-compose up -d frontend
-
-# 僅啟動後端服務器
-podman-compose up -d backend
-
-# 重新構建映像
-podman-compose build
-
-# 構建並啟動
-podman-compose up --build
-
-# 查看應用日誌
-podman-compose logs -f app
-
-# 查看前端日誌
-podman-compose logs -f frontend
-
-# 檢查服務狀態
-podman-compose ps
-
-# 停止所有服務
-podman-compose down
-```
-
-### 問題排除構建（僅問題時使用）
-```bash
-# 強制重建應用容器（清除快取）
-podman-compose build app --no-cache
-
-# 強制重建前端容器（清除快取）
-podman-compose build frontend --no-cache
-
-# 構建並啟動所有服務
-podman-compose up -d --build
-```
-
-**注意**: `--no-cache` 會顯著增加構建時間，僅在以下情況使用：
-- 之前構建失敗並留下問題快取
-- 重要代碼修改後構建異常
-- 新依賴或模組無法正確載入
+**注意**: 本機開發需要：
+- Go 1.23+
+- Node.js 20+
+- PostgreSQL + PostGIS
+- 正確配置 .env
 
 ## 編碼規範
 

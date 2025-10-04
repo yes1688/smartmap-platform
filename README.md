@@ -38,11 +38,11 @@ cp .env.example .env
 
 # 3. 啟動（二選一）
 
-# 🔧 本機開發（熱重載）
-./run dev
+# 🔧 開發環境（熱重載）
+make dev
 
 # 🚀 生產環境（優化構建）
-./run prod
+make prod
 ```
 
 ### 訪問地址
@@ -51,8 +51,8 @@ cp .env.example .env
 
 | 環境 | 說明 | 特點 |
 |-----|------|-----|
-| 開發環境 | `./run dev` | 熱重載 ⚡ |
-| 生產環境 | `./run prod` | 優化構建 🚀 |
+| 開發環境 | `make dev` | 熱重載 ⚡ |
+| 生產環境 | `make prod` | 優化構建 🚀 |
 
 **統一路由結構**：
 - 前端應用：`http://localhost:7003/`
@@ -64,28 +64,34 @@ cp .env.example .env
 
 ## 📋 管理指令
 
+### 查看所有指令
+```bash
+make help           # 顯示所有可用指令
+```
+
 ### 開發環境（最常用）
 ```bash
-./run dev           # 啟動開發環境（熱重載）
-./run dev-stop      # 停止
-./run dev-logs      # 查看日誌
+make dev            # 啟動開發環境（熱重載）
+make dev-down       # 停止
+make dev-logs       # 查看日誌
+make dev-restart    # 重啟
+make dev-build      # 重新構建容器
 ```
 
 ### 生產環境
 ```bash
-./run prod          # 啟動生產環境
-./run prod-stop     # 停止
-./run prod-logs     # 查看日誌
+make prod           # 啟動生產環境
+make prod-down      # 停止
+make prod-logs      # 查看日誌
+make prod-restart   # 重啟
+make prod-build     # 重新構建容器
 ```
 
-### 工具指令
+### 其他指令
 ```bash
-./run build         # 構建前端
-./run test-run      # 運行測試
-./run shell         # 進入後端容器
-./run db            # 進入數據庫
-./run status        # 查看狀態
-./run clean         # 清理所有環境
+make build-frontend # 構建前端靜態檔案
+make status         # 查看容器狀態
+make clean          # 清理所有容器和資料卷
 ```
 
 ## 🏗️ 技術架構
@@ -161,9 +167,6 @@ cp .env.example .env
 
 ```bash
 # 運行所有測試
-./run test-run
-
-# 或手動運行
 podman exec spatial-backend-dev go test ./internal/... -v -cover
 ```
 
@@ -172,17 +175,17 @@ podman exec spatial-backend-dev go test ./internal/... -v -cover
 ## 🤝 開發工作流程
 
 ```bash
-# 1. 本機開發
-./run dev
+# 1. 啟動開發環境
+make dev
 
 # 2. 修改代碼（自動重載）
 
 # 3. 運行測試
-./run test-run
+podman exec spatial-backend-dev go test ./internal/... -v
 
 # 4. 提交前驗證（生產級構建）
-./run dev-stop
-./run prod
+make dev-down
+make prod
 
 # 5. 驗證通過後提交
 git add .
@@ -237,7 +240,7 @@ MIT License - 詳見 [LICENSE](LICENSE)
 **🎉 現在就開始你的智慧空間之旅！**
 
 ```bash
-./run dev
+make dev
 ```
 
 *智慧空間平台 | 由 Go + SolidJS + AI 驅動 | 2025*
