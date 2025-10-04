@@ -1,14 +1,28 @@
-# Nginx Dockerfile - 從 app 容器複製前端靜態檔案
-# 這是最安全的方式：直接從 image 複製，不依賴 volume 同步
+# Nginx Dockerfile - 自己構建前端
+# 方案 C：完全分離前後端
 
-# Stage 1: 構建 app 容器獲取前端檔案
-FROM smartmap-platform_app:latest AS app-builder
+# Stage 1: 構建前端
+FROM docker.io/node:20-alpine AS frontend-builder
+
+WORKDIR /frontend
+
+# 複製 package 文件
+COPY web/package.json ./
+
+# 安裝依賴
+RUN npm install
+
+# 複製前端源代碼
+COPY web/ ./
+
+# 構建前端
+RUN npm run build
 
 # Stage 2: Nginx 容器
 FROM docker.io/nginx:alpine
 
-# 從 app 容器複製前端靜態檔案
-COPY --from=app-builder /app/web /usr/share/nginx/html
+# 從 builder 階段複製構建產物
+COPY --from=frontend-builder /frontend/dist /usr/share/nginx/html
 
 # 健康檢查
 HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
