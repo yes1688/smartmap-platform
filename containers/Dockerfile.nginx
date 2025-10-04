@@ -1,0 +1,17 @@
+# Nginx Dockerfile - 從 app 容器複製前端靜態檔案
+# 這是最安全的方式：直接從 image 複製，不依賴 volume 同步
+
+# Stage 1: 構建 app 容器獲取前端檔案
+FROM smartmap-platform_app:latest AS app-builder
+
+# Stage 2: Nginx 容器
+FROM docker.io/nginx:alpine
+
+# 從 app 容器複製前端靜態檔案
+COPY --from=app-builder /app/web /usr/share/nginx/html
+
+# 健康檢查
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
+
+# Nginx 會自動啟動

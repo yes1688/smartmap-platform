@@ -1,48 +1,11 @@
-# Frontend Build Container - 只構建前端，不運行
-# 用於生產環境，將構建好的 dist/ 複製到 volume
+# Frontend Build Container
+# 這個檔案已廢棄 - 前端構建已整合到 containers/Containerfile
+# 保留此檔案僅供參考
 
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 WORKDIR /app
 
-# 複製 package 文件
-COPY package*.json ./
+RUN echo "⚠️  This Dockerfile is deprecated. Frontend build is now integrated in containers/Containerfile"
 
-# 安裝依賴
-RUN npm ci
-
-# 複製源代碼
-COPY . .
-
-# 構建應用
-RUN npm run build
-
-# 使用輕量級映像來持有構建結果
-FROM alpine:latest
-
-WORKDIR /dist
-
-# 從 builder 階段複製構建產物
-COPY --from=builder /app/dist /dist
-
-# 驗證檔案確實存在並等待 volume 同步
-# 1. 列出所有檔案確認
-# 2. 計算檔案數量
-# 3. 等待一段時間確保 volume 完全同步
-# 4. 再次驗證檔案數量沒有變化（確認同步穩定）
-CMD ["sh", "-c", "\
-  echo '📦 Frontend build completed. Files in container:' && \
-  ls -lh /dist && \
-  echo '' && \
-  FILE_COUNT=$(find /dist -type f | wc -l) && \
-  echo \"📊 Total files: $FILE_COUNT\" && \
-  echo '⏳ Waiting for volume sync (10 seconds)...' && \
-  sleep 10 && \
-  VERIFY_COUNT=$(find /dist -type f | wc -l) && \
-  echo \"✅ Volume sync verified. Files: $VERIFY_COUNT\" && \
-  if [ \"$FILE_COUNT\" -eq \"$VERIFY_COUNT\" ]; then \
-    echo '✅ Volume sync completed successfully'; \
-  else \
-    echo '⚠️  Warning: File count mismatch!'; \
-  fi \
-"]
+CMD ["echo", "Deprecated: Use containers/Containerfile instead"]
