@@ -340,7 +340,7 @@ const App: Component = () => {
       />
 
       {/* Main Application Container */}
-      <main class="flex-1 relative" style="height: calc(100vh - 65px);">
+      <main class="flex-1 relative lg:h-[calc(100vh-65px)] h-[calc(100dvh-65px)]">
         {/* Primary Content Area */}
         <div class="relative w-full h-full" style="height: 100%;">
           {/* Map Interface */}
@@ -463,8 +463,8 @@ const App: Component = () => {
         onClose={handleCloseWelcomeModal}
       />
 
-      {/* Status Bar (Mobile) */}
-      <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-glass border-t border-neutral-200/50 p-4 z-30">
+      {/* 移除手機底部狀態欄 - 簡化界面，專注語音 */}
+      {/* <div class="lg:hidden fixed bottom-0 left-0 right-0 bg-glass border-t border-neutral-200/50 p-4 z-30">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-3">
             <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse-subtle"></div>
@@ -481,7 +481,7 @@ const App: Component = () => {
             </button>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

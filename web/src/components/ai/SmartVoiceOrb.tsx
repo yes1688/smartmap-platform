@@ -469,7 +469,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
 
   return (
     <div
-      class="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-3"
+      class="fixed bottom-6 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-3"
       style={{
         "user-select": "none",
         "-webkit-user-select": "none",
