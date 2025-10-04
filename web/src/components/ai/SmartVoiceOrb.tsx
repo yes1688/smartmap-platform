@@ -54,8 +54,12 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       console.log('   - continuous: false (單次識別)');
       recognition.interimResults = true;
       console.log('   - interimResults: true (即時結果)');
+
+      // 多語言支援：zh-TW 為主，但也能識別混合中英文
+      // Web Speech API 的 lang 只能設定單一語言
+      // 但 Chrome/Safari 的 zh-TW 模式通常也能識別英文單詞（地名、人名等）
       recognition.lang = 'zh-TW';
-      console.log('   - language: zh-TW (繁體中文)');
+      console.log('   - language: zh-TW (支援中文 + 混合英文)');
 
       console.log('🔧 語音識別配置完成');
 
