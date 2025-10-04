@@ -27,18 +27,7 @@ services:
       - spatial-network
     restart: unless-stopped
 
-  # 前端構建服務 - 只構建靜態檔案
-  frontend-builder:
-    build:
-      context: ./web
-      dockerfile: Dockerfile.build
-    container_name: spatial-frontend-builder
-    volumes:
-      - frontend-dist:/dist
-    networks:
-      - spatial-network
-
-  # Go 應用 - 生產模式 (多階段構建)
+  # Go 應用 - 生產模式 (多階段構建，包含前端)
   app:
     build:
       context: .

@@ -66,8 +66,6 @@ dev-build:
 
 prod:
 	@echo "🚀 啟動生產環境（包含前端構建）..."
-	@echo "🗑️  刪除舊的前端 volume 以確保更新..."
-	@podman volume rm smartmap-platform_frontend-dist 2>/dev/null || true
 	podman-compose up -d --build
 	@echo "✅ 生產環境已啟動"
 	@echo "📍 訪問網址: http://localhost:7003"
