@@ -335,9 +335,7 @@ const App: Component = () => {
       </div>
 
       {/* Header Navigation */}
-      <Header
-        onToggleChat={handleToggleChatPanel}
-      />
+      <Header />
 
       {/* Main Application Container */}
       <main class="flex-1 relative lg:h-[calc(100vh-65px)] h-[calc(100dvh-65px)]">
