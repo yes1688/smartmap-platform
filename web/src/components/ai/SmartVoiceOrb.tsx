@@ -135,14 +135,22 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     }
   });
 
-  const startRecording = async (e?: Event) => {
+  const toggleRecording = async (e?: Event) => {
     // 防止事件傳播和默認行為
     if (e) {
       e.preventDefault();
       e.stopPropagation();
     }
 
-    console.log('🎤 開始語音錄音...', e?.type || 'unknown event');
+    // 如果正在錄音，則停止
+    if (isRecording()) {
+      console.log('🛑 手動停止錄音');
+      stopRecording();
+      return;
+    }
+
+    // 開始錄音
+    console.log('🎤 開始語音錄音（自動停頓偵測模式）...', e?.type || 'unknown event');
     console.log('🔬 ===== 深度分析：語音識別啟動流程 =====');
 
     try {
@@ -153,7 +161,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
 
       setIsRecording(true);
       setIsActive(true);
-      setPreviewText('🎤 聆聽中...');
+      setPreviewText('🎤 請說話...（說完會自動停止）');
 
       if (recognition) {
         // 先請求麥克風權限
@@ -171,8 +179,8 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
             }))
           });
 
-          console.log('🔥 步驟2: 啟動 Google 語音識別服務...');
-          console.log('🌐 注意觀察 Network 面板，可能會出現對 Google 服務的請求');
+          console.log('🔥 步驟2: 啟動語音識別服務（自動停頓偵測模式）...');
+          console.log('📢 說完話後保持安靜 1-2 秒，系統會自動停止並處理');
 
           // 啟動深度網路監控
           if (deepAnalysis) {
@@ -181,7 +189,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
 
           recognition.start();
           console.log('🚀 webkitSpeechRecognition.start() 已調用');
-          console.log('⏳ 等待 Google 語音服務響應...');
+          console.log('⏳ 監聽中... 會自動偵測停頓並結束');
 
         } catch (permissionError) {
           console.error('❌ 麥克風權限被拒絕:', permissionError);
@@ -499,12 +507,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         "-webkit-touch-callout": "none"
       }}>
         <button
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onMouseLeave={stopRecording}
-          onTouchStart={startRecording}
-          onTouchEnd={stopRecording}
-          onTouchCancel={stopRecording}
+          onClick={toggleRecording}
           class={`group relative w-16 h-16 lg:w-16 lg:h-16 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 ${
             isRecording()
               ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-2xl animate-pulse'
@@ -559,7 +562,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         {/* 操作提示 */}
         {!isActive() && (
           <div class="absolute -bottom-8 right-0 text-xs text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
-            按住說話 / 空格鍵
+            點擊說話（自動停止）
           </div>
         )}
       </div>
