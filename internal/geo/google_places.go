@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -48,6 +49,21 @@ func NewGooglePlacesService() (*GooglePlacesService, error) {
 }
 
 func (g *GooglePlacesService) SearchPlace(query string) (*Location, error) {
+	// Extract city name from query if present (e.g., "嘉義火雞肉飯" -> "嘉義")
+	cityKeywords := []string{
+		"台北", "新北", "桃園", "台中", "台南", "高雄", "基隆", "新竹", "嘉義", "彰化",
+		"南投", "雲林", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "馬祖",
+	}
+
+	var cityName string
+	lowerQuery := strings.ToLower(query)
+	for _, city := range cityKeywords {
+		if strings.Contains(lowerQuery, strings.ToLower(city)) {
+			cityName = city
+			break
+		}
+	}
+
 	// Prepare URL with parameters
 	params := url.Values{}
 	params.Set("query", query+" Taiwan") // Add Taiwan context
@@ -89,8 +105,39 @@ func (g *GooglePlacesService) SearchPlace(query string) (*Location, error) {
 		return nil, fmt.Errorf("no results found for: %s", query)
 	}
 
-	// Use the first result
-	place := result.Results[0]
+	// If city name was detected in query, validate results match the city
+	var place *struct {
+		Name     string `json:"name"`
+		PlaceID  string `json:"place_id"`
+		Geometry struct {
+			Location struct {
+				Lat float64 `json:"lat"`
+				Lng float64 `json:"lng"`
+			} `json:"location"`
+		} `json:"geometry"`
+		FormattedAddress string   `json:"formatted_address"`
+		Types            []string `json:"types"`
+	}
+
+	if cityName != "" {
+		// Try to find a result that matches the specified city
+		fmt.Printf("🔍 Looking for results in city: %s\n", cityName)
+		for i := range result.Results {
+			if strings.Contains(result.Results[i].FormattedAddress, cityName) {
+				place = &result.Results[i]
+				fmt.Printf("✅ Found matching result in %s: %s\n", cityName, place.FormattedAddress)
+				break
+			}
+		}
+
+		if place == nil {
+			fmt.Printf("⚠️ No results found in %s, using first result: %s\n", cityName, result.Results[0].FormattedAddress)
+			place = &result.Results[0]
+		}
+	} else {
+		// No city specified, use first result
+		place = &result.Results[0]
+	}
 
 	location := &Location{
 		Latitude:  place.Geometry.Location.Lat,

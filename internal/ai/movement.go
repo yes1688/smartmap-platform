@@ -367,16 +367,37 @@ func (p *MovementCommandParser) containsLocationName(text string) bool {
 func (p *MovementCommandParser) extractLocationFromCommand(text string) string {
 	lowerText := strings.ToLower(text)
 
-	// Common patterns for movement commands in Chinese and English
+	// Location keywords priority list (cities and landmarks)
+	locationKeywords := []string{
+		// 主要城市（優先匹配，避免被後面的內容污染）
+		"台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市", "基隆市", "新竹市", "嘉義市", "彰化縣",
+		"台北", "新北", "桃園", "台中", "台南", "高雄", "基隆", "新竹", "嘉義", "彰化",
+		"南投", "雲林", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "馬祖",
+
+		// 著名景點
+		"台北101", "中正紀念堂", "故宮", "總統府", "自由廣場", "龍山寺", "西門町", "九份", "淡水", "北投", "陽明山",
+		"日月潭", "阿里山", "太魯閣", "墾丁", "清境", "合歡山", "玉山", "溪頭", "杉林溪", "集集", "鹿港", "安平", "赤崁樓", "愛河", "旗津",
+		"佛光山", "義大世界", "六合夜市", "逢甲夜市", "一中商圈", "東海大學", "中興大學", "成功大學", "中山大學", "高雄大學",
+	}
+
+	// First, try to find known location keywords in the text
+	// This prevents "去嘉義市吃火雞肉飯" from becoming "嘉義市吃火雞肉飯"
+	for _, keyword := range locationKeywords {
+		if strings.Contains(lowerText, strings.ToLower(keyword)) {
+			return keyword
+		}
+	}
+
+	// If no known location found, try regex patterns
 	patterns := []struct {
 		regex string
 		group int // which capture group contains the location name
 	}{
-		{`移動.*?到\s*([^，。！？\s]+)`, 1},    // 移動到{地點}
-		{`去\s*([^，。！？\s]+)`, 1},         // 去{地點}
-		{`前往\s*([^，。！？\s]+)`, 1},       // 前往{地點}
-		{`帶我去\s*([^，。！？\s]+)`, 1},     // 帶我去{地點}
-		{`導航到\s*([^，。！？\s]+)`, 1},     // 導航到{地點}
+		{`移動.*?到\s*([^，。！？\s吃喝玩買]+)`, 1},    // 移動到{地點}，排除常見動作詞
+		{`去\s*([^，。！？\s吃喝玩買]+)`, 1},         // 去{地點}，排除「吃」「喝」等
+		{`前往\s*([^，。！？\s吃喝玩買]+)`, 1},       // 前往{地點}
+		{`帶我去\s*([^，。！？\s吃喝玩買]+)`, 1},     // 帶我去{地點}
+		{`導航到\s*([^，。！？\s吃喝玩買]+)`, 1},     // 導航到{地點}
 		{`move.*?to\s+([^\s,\.!?]+)`, 1},   // move to {location}
 		{`go\s+to\s+([^\s,\.!?]+)`, 1},     // go to {location}
 		{`navigate\s+to\s+([^\s,\.!?]+)`, 1}, // navigate to {location}
@@ -391,25 +412,6 @@ func (p *MovementCommandParser) extractLocationFromCommand(text string) string {
 			if locationName != "" {
 				return locationName
 			}
-		}
-	}
-
-	// If no specific pattern matches, try to extract location keywords
-	// Look for known location names in the text
-	locationKeywords := []string{
-		// 主要城市
-		"台北", "高雄", "台中", "台南", "桃園", "新竹", "基隆", "嘉義", "彰化", "南投", "雲林", "屏東", "宜蘭", "花蓮", "台東", "澎湖", "金門", "馬祖",
-
-		// 著名景點
-		"墾丁", "台北101", "中正紀念堂", "故宮", "夜市", "火車站", "機場", "總統府", "自由廣場", "龍山寺", "西門町", "九份", "淡水", "北投", "陽明山",
-		"日月潭", "阿里山", "太魯閣", "清境", "合歡山", "玉山", "溪頭", "杉林溪", "集集", "鹿港", "安平", "赤崁樓", "愛河", "旗津",
-		"佛光山", "義大世界", "六合夜市", "逢甲夜市", "一中商圈", "東海大學", "中興大學", "成功大學", "中山大學", "高雄大學",
-	}
-
-	// Find the first location keyword in the text
-	for _, keyword := range locationKeywords {
-		if strings.Contains(lowerText, strings.ToLower(keyword)) {
-			return keyword
 		}
 	}
 

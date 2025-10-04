@@ -95,21 +95,6 @@ services:
     networks:
       - spatial-dev-network
 
-  # Redis - API 使用量追蹤
-  redis:
-    image: docker.io/redis:7-alpine
-    container_name: spatial-redis-dev
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data_dev:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    networks:
-      - spatial-dev-network
-
   # Nginx 反向代理 - 開發環境統一入口
   nginx:
     image: docker.io/nginx:alpine
@@ -133,8 +118,6 @@ services:
 
 volumes:
   postgres_data_dev:
-    driver: local
-  redis_data_dev:
     driver: local
 
 networks:

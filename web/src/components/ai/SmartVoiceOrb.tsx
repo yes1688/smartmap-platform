@@ -23,6 +23,7 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   let deepAnalysis: any = null;
   let ultimateAnalyzer: any = null;
   let finalTranscriptText = ''; // 儲存最終識別文字
+  let isProcessingCommand = false; // 防止重複處理
 
   // 語音識別設置
   onMount(() => {
@@ -80,13 +81,15 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
         if (interimTranscript && !finalTranscript) {
           setInterimText(`💭 ${interimTranscript}`);
           setPreviewText('');
+          // 同時儲存 interim text 作為備用（如果沒有收到 final）
+          if (!finalTranscriptText) {
+            finalTranscriptText = interimTranscript;
+            console.log('📝 暫存 interim text:', interimTranscript);
+          }
         } else if (finalTranscript) {
           setInterimText('');
           setPreviewText(`💬 ${finalTranscript}`);
-          finalTranscriptText = finalTranscript; // 儲存最終識別文字
-        }
-
-        if (finalTranscript) {
+          finalTranscriptText = finalTranscript; // 儲存最終識別文字（覆蓋 interim）
           console.log('✅ 最終識別結果:', finalTranscript);
         }
       };
@@ -94,14 +97,31 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       recognition.onend = () => {
         console.log('🏁 語音識別結束 (onend 事件)');
         console.log('📝 finalTranscriptText:', finalTranscriptText);
+        console.log('📝 previewText:', previewText());
+        console.log('📝 isProcessingCommand:', isProcessingCommand);
+
+        // 獲取要處理的文字：優先使用 finalTranscriptText，否則從 previewText 提取
+        let textToProcess = finalTranscriptText;
+        if (!textToProcess && previewText()) {
+          // 從 previewText 提取文字（去掉表情符號前綴）
+          textToProcess = previewText().replace(/^💬\s*/, '').trim();
+          console.log('📝 從 previewText 提取文字:', textToProcess);
+        }
+
         // 在識別結束時處理語音指令
-        if (finalTranscriptText) {
-          console.log('✅ [onend] 處理最終識別結果:', finalTranscriptText);
-          const textToProcess = finalTranscriptText;
-          finalTranscriptText = ''; // 先清空，避免重複處理
-          processVoiceCommand(textToProcess);
+        if (textToProcess && !isProcessingCommand) {
+          console.log('✅ [onend] 處理最終識別結果:', textToProcess);
+          isProcessingCommand = true;
+          finalTranscriptText = ''; // 清空避免重複處理
+          processVoiceCommand(textToProcess).finally(() => {
+            console.log('✅ 指令處理完成，重置 isProcessingCommand');
+            isProcessingCommand = false;
+          });
         } else {
-          console.log('⚠️ [onend] 沒有最終識別文字');
+          console.log('⚠️ [onend] 跳過處理:', {
+            hasText: !!textToProcess,
+            isProcessing: isProcessingCommand
+          });
         }
       };
 
@@ -126,7 +146,11 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
     console.log('🔬 ===== 深度分析：語音識別啟動流程 =====');
 
     try {
-      finalTranscriptText = ''; // 重置文字
+      // 重置所有狀態
+      console.log('🔄 重置狀態: finalTranscriptText, isProcessingCommand');
+      finalTranscriptText = '';
+      isProcessingCommand = false;
+
       setIsRecording(true);
       setIsActive(true);
       setPreviewText('🎤 聆聽中...');
@@ -197,17 +221,6 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
       recognition.stop();
       console.log('🚀 webkitSpeechRecognition.stop() 已調用');
       console.log('⏳ 等待 onend 事件處理語音指令...');
-
-      // 備用機制：如果 500ms 後 onend 還沒觸發，手動處理
-      setTimeout(() => {
-        if (finalTranscriptText) {
-          console.log('⚠️ [備用機制] onend 可能未觸發，手動處理語音指令');
-          console.log('📝 finalTranscriptText:', finalTranscriptText);
-          const textToProcess = finalTranscriptText;
-          finalTranscriptText = ''; // 清空
-          processVoiceCommand(textToProcess);
-        }
-      }, 500);
     }
 
     // 輸出深度分析結果
@@ -235,9 +248,12 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
   const processVoiceCommand = async (text: string) => {
     if (!text.trim()) return;
 
+    console.log('🎯 開始處理語音指令:', text);
     setIsProcessing(true);
 
     try {
+      console.log('📡 發送請求到:', `${CONFIG.api.baseUrl}/voice/command`);
+
       // First, try the new voice command endpoint for intelligent intent parsing
       const voiceResponse = await fetch(`${CONFIG.api.baseUrl}/voice/command`, {
         method: 'POST',
@@ -252,6 +268,9 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
 
       if (voiceResponse.ok) {
         const data = await voiceResponse.json();
+        console.log('📥 收到 API 回應:', data);
+        console.log('📥 intentType:', data.intentType);
+        console.log('📥 movement:', data.movement);
 
         // Display usage warning if present
         if (data.usageStats?.warning) {
@@ -302,22 +321,38 @@ export const SmartVoiceOrb: Component<SmartVoiceOrbProps> = (props) => {
           console.log('🤖 AI 回應:', data.aiResponse);
         } else if (data.intentType === 'move' && data.movement) {
           // Movement command
+          console.log('🚶 收到移動指令:', data.movement);
+          console.log('🚶 移動成功狀態:', data.movement.success);
+          console.log('🚶 新位置資料:', data.movement.newPosition);
+
           setAiResponse(data.aiResponse || '正在移動...');
           setShowAiResponse(true);
-          console.log('🚶 移動指令:', data.movement);
 
           // Trigger movement callback
           if (props.onMovementResponse) {
+            console.log('📞 調用 onMovementResponse callback');
             props.onMovementResponse(data);
           }
 
           // Update player position in gameStore
           if (data.movement.success && data.movement.newPosition) {
+            console.log('✅ 準備更新玩家位置:', {
+              lat: data.movement.newPosition.latitude,
+              lng: data.movement.newPosition.longitude
+            });
+
             gameActions.setPlayerPosition(
               data.movement.newPosition.latitude,
               data.movement.newPosition.longitude
             );
-            console.log('✅ 玩家位置已更新:', data.movement.newPosition);
+
+            console.log('✅ gameActions.setPlayerPosition 已調用');
+
+            // 顯示成功訊息
+            setPreviewText(`✅ 已移動到 ${data.movement.newPosition.name || '目的地'}`);
+          } else {
+            console.error('❌ 移動失敗:', data.movement);
+            setPreviewText('❌ 移動失敗');
           }
         } else {
           // Other intents (describe, recommend)

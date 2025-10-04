@@ -42,27 +42,19 @@ func NewGeocodingService() (*GeocodingService, error) {
 }
 
 func (g *GeocodingService) GeocodeLocation(locationName string) (*Location, error) {
-	// Try Nominatim first (free)
-	location, err := g.tryNominatim(locationName)
-	if err == nil {
-		fmt.Printf("✅ Nominatim found location: %s\n", location.Name)
-		return location, nil
-	}
-
-	fmt.Printf("❌ Nominatim failed: %v\n", err)
-
-	// Fallback to Google Places API if available
+	// Use Google Places API only (most accurate for Taiwan locations)
 	if g.googlePlaces != nil {
-		fmt.Printf("🔄 Trying Google Places API...\n")
+		fmt.Printf("🔍 Using Google Places API for: %s\n", locationName)
 		location, err := g.googlePlaces.SearchPlace(locationName)
 		if err == nil {
 			fmt.Printf("✅ Google Places found location: %s\n", location.Name)
 			return location, nil
 		}
 		fmt.Printf("❌ Google Places failed: %v\n", err)
+		return nil, fmt.Errorf("failed to find location: %s", locationName)
 	}
 
-	return nil, fmt.Errorf("no geocoding service could find location: %s", locationName)
+	return nil, fmt.Errorf("Google Places API not available")
 }
 
 func (g *GeocodingService) tryNominatim(locationName string) (*Location, error) {
