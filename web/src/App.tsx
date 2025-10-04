@@ -5,9 +5,10 @@ import DeckGLMap from '@/components/map/DeckGLMap';
 import GamePanel from '@/components/game/GamePanel';
 import SmartVoiceOrb from '@/components/ai/SmartVoiceOrb';
 import SpeechEarVoiceOrb from '@/components/ai/SpeechEarVoiceOrb';
-import SmartSearch from '@/components/ai/SmartSearch';
-import SmartContextPanel from '@/components/ai/SmartContextPanel';
-import OneIntelligenceSystem from '@/components/ai/OneIntelligenceSystem';
+// 移除複雜組件，專注語音交互
+// import SmartSearch from '@/components/ai/SmartSearch';
+// import SmartContextPanel from '@/components/ai/SmartContextPanel';
+// import OneIntelligenceSystem from '@/components/ai/OneIntelligenceSystem';
 import NearbyLocationsList from '@/components/ai/NearbyLocationsList';
 import HistoricalSitePanel from '@/components/game/HistoricalSitePanel';
 import LoadingOverlay from '@/components/layout/LoadingOverlay';
@@ -35,15 +36,14 @@ const App: Component = () => {
     currentHistoricalSite: undefined,
   });
 
-  // 新智能界面狀態
-  const [isSearchOpen, setIsSearchOpen] = createSignal(false);
-  const [contextPanel, setContextPanel] = createSignal<{
-    isVisible: boolean;
-    location?: any;
-    position: { x: number; y: number };
-  }>({ isVisible: false, position: { x: 0, y: 0 } });
-  // ONE Intelligence System 狀態
-  const [oneSystemEnabled, setOneSystemEnabled] = createSignal(true);
+  // 簡化：移除不需要的智能界面狀態
+  // const [isSearchOpen, setIsSearchOpen] = createSignal(false);
+  // const [contextPanel, setContextPanel] = createSignal<{
+  //   isVisible: boolean;
+  //   location?: any;
+  //   position: { x: number; y: number };
+  // }>({ isVisible: false, position: { x: 0, y: 0 } });
+  // const [oneSystemEnabled, setOneSystemEnabled] = createSignal(true);
 
   const [userId] = createSignal(generateUserId());
 
@@ -87,15 +87,15 @@ const App: Component = () => {
       if (mapContainer) {
         gestureEngine = new GestureEngine(mapContainer);
 
-        // 註冊自定義手勢事件
-        window.addEventListener('gesture:quickMove', handleGestureQuickMove);
-        window.addEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
-        window.addEventListener('gesture:showNearby', handleShowSearch);
-        window.addEventListener('gesture:hideUI', () => {
-          setIsSearchOpen(false);
-          setOneSystemEnabled(false);
-          setContextPanel(prev => ({ ...prev, isVisible: false }));
-        });
+        // 簡化：移除不需要的手勢事件
+        // window.addEventListener('gesture:quickMove', handleGestureQuickMove);
+        // window.addEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
+        // window.addEventListener('gesture:showNearby', handleShowSearch);
+        // window.addEventListener('gesture:hideUI', () => {
+        //   setIsSearchOpen(false);
+        //   setOneSystemEnabled(false);
+        //   setContextPanel(prev => ({ ...prev, isVisible: false }));
+        // });
       }
 
       // 初始化個性化引擎
@@ -133,10 +133,11 @@ const App: Component = () => {
     animationEngine.destroy();
     systemMonitor.destroy();
 
-    window.removeEventListener('gesture:quickMove', handleGestureQuickMove);
-    window.removeEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
-    window.removeEventListener('gesture:showNearby', handleShowSearch);
-    window.removeEventListener('gesture:hideUI', () => {});
+    // 簡化：移除不需要的事件監聽器
+    // window.removeEventListener('gesture:quickMove', handleGestureQuickMove);
+    // window.removeEventListener('gesture:showAI', () => setOneSystemEnabled(!oneSystemEnabled()));
+    // window.removeEventListener('gesture:showNearby', handleShowSearch);
+    // window.removeEventListener('gesture:hideUI', () => {});
 
     console.log('🧹 所有智能系統已清理完成');
   });
@@ -147,23 +148,22 @@ const App: Component = () => {
     setUiState('isChatPanelOpen', !uiState.isChatPanelOpen);
   };
 
-  // Header AI 助手按鈕觸發 ONE 系統
-  const handleToggleOneSystem = () => {
-    setOneSystemEnabled(!oneSystemEnabled());
-  };
+  // 簡化：移除不需要的處理函數
+  // const handleToggleOneSystem = () => {
+  //   setOneSystemEnabled(!oneSystemEnabled());
+  // };
 
   const handleToggleGamePanel = () => {
     setUiState('isGamePanelExpanded', !uiState.isGamePanelExpanded);
   };
 
-  // 智能搜索處理
-  const handleShowSearch = () => {
-    setIsSearchOpen(true);
-  };
-
-  const handleCloseSearch = () => {
-    setIsSearchOpen(false);
-  };
+  // 簡化：移除搜索處理
+  // const handleShowSearch = () => {
+  //   setIsSearchOpen(true);
+  // };
+  // const handleCloseSearch = () => {
+  //   setIsSearchOpen(false);
+  // };
 
   // 快速移動處理
   const handleQuickMove = async (location: string) => {
@@ -195,44 +195,32 @@ const App: Component = () => {
     }
   };
 
-  // 上下文面板處理
-  const handleMapClick = (event: any) => {
-    // 可以在這裡處理地圖點擊，顯示上下文面板
-    const { x, y } = event;
-    setContextPanel({
-      isVisible: true,
-      location: {
-        name: '點擊位置',
-        type: 'location',
-        description: '這是一個地圖位置點'
-      },
-      position: { x, y }
-    });
-  };
-
-  const handleCloseContextPanel = () => {
-    setContextPanel(prev => ({ ...prev, isVisible: false }));
-  };
-
-  // 快捷鍵支持
-  onMount(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+K 或 Ctrl+K 開啟搜索
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchOpen(true);
-      }
-
-      // ESC 關閉所有面板
-      if (e.key === 'Escape') {
-        setIsSearchOpen(false);
-        setContextPanel(prev => ({ ...prev, isVisible: false }));
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  });
+  // 簡化：移除上下文面板和快捷鍵
+  // const handleMapClick = (event: any) => {
+  //   const { x, y } = event;
+  //   setContextPanel({
+  //     isVisible: true,
+  //     location: { name: '點擊位置', type: 'location', description: '這是一個地圖位置點' },
+  //     position: { x, y }
+  //   });
+  // };
+  // const handleCloseContextPanel = () => {
+  //   setContextPanel(prev => ({ ...prev, isVisible: false }));
+  // };
+  // onMount(() => {
+  //   const handleKeyDown = (e: KeyboardEvent) => {
+  //     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+  //       e.preventDefault();
+  //       setIsSearchOpen(true);
+  //     }
+  //     if (e.key === 'Escape') {
+  //       setIsSearchOpen(false);
+  //       setContextPanel(prev => ({ ...prev, isVisible: false }));
+  //     }
+  //   };
+  //   document.addEventListener('keydown', handleKeyDown);
+  //   return () => document.removeEventListener('keydown', handleKeyDown);
+  // });
 
   const handleShowHistoricalSite = (site: HistoricalSite) => {
     setUiState('currentHistoricalSite', site);
@@ -252,25 +240,17 @@ const App: Component = () => {
     setShowWelcomeModal(false);
   };
 
-  // 手勢快速移動處理
-  const handleGestureQuickMove = (event: CustomEvent) => {
-    const { position } = event.detail;
-    console.log('🤲 手勢快速移動:', position);
-    // 這裡可以實現基於手勢位置的智能移動
-  };
-
-  // ONE 系統與聊天面板同步
-  const handleOneSystemChatSync = (message: string) => {
-    console.log('💬 ONE 系統同步到聊天:', message);
-    // 這裡可以將 ONE 系統的建議同步到聊天面板
-    // 如果需要的話，可以觸發聊天面板的輸入
-  };
-
-  // ONE 系統觸發語音
-  const handleOneSystemVoiceTrigger = () => {
-    console.log('🎤 ONE 系統觸發語音輸入');
-    // 這裡可以觸發語音球的錄音功能
-  };
+  // 簡化：移除不需要的處理函數
+  // const handleGestureQuickMove = (event: CustomEvent) => {
+  //   const { position } = event.detail;
+  //   console.log('🤲 手勢快速移動:', position);
+  // };
+  // const handleOneSystemChatSync = (message: string) => {
+  //   console.log('💬 ONE 系統同步到聊天:', message);
+  // };
+  // const handleOneSystemVoiceTrigger = () => {
+  //   console.log('🎤 ONE 系統觸發語音輸入');
+  // };
 
   // 處理語音指令
   const handleVoiceCommand = async (text: string) => {
@@ -356,7 +336,7 @@ const App: Component = () => {
 
       {/* Header Navigation */}
       <Header
-        onToggleChat={handleToggleOneSystem}
+        onToggleChat={handleToggleChatPanel}
       />
 
       {/* Main Application Container */}
@@ -404,8 +384,8 @@ const App: Component = () => {
               </Show>
             </div>
 
-            {/* 🚀 ONE Intelligence System - 革命性中央智能球 */}
-            <div class="pointer-events-auto">
+            {/* 簡化：移除複雜的 ONE Intelligence System */}
+            {/* <div class="pointer-events-auto">
               <Show when={oneSystemEnabled()}>
                 <OneIntelligenceSystem
                   onQuickMove={handleQuickMove}
@@ -414,10 +394,10 @@ const App: Component = () => {
                   onTriggerVoice={handleOneSystemVoiceTrigger}
                 />
               </Show>
-            </div>
+            </div> */}
 
-            {/* Floating Action Button (Mobile) - 移到左下避免與語音球衝突 */}
-            <div class="lg:hidden fixed bottom-24 left-4 z-40 pointer-events-auto">
+            {/* 簡化：移除浮動按鈕 */}
+            {/* <div class="lg:hidden fixed bottom-24 left-4 z-40 pointer-events-auto">
               <button
                 onClick={handleToggleOneSystem}
                 class="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full shadow-xl flex items-center justify-center text-white animate-scale-in"
@@ -427,28 +407,25 @@ const App: Component = () => {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
                 </svg>
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 
-        {/* 🗑️ SmartBottomToolbar 已被 ONE Intelligence System 替代 */}
-
-        {/* 智能搜索界面 */}
-        <SmartSearch
+        {/* 簡化：移除搜索和上下文面板 */}
+        {/* <SmartSearch
           isOpen={isSearchOpen()}
           onClose={handleCloseSearch}
           onQuickMove={handleQuickMove}
-        />
+        /> */}
 
-        {/* 智能上下文面板 */}
-        <SmartContextPanel
+        {/* <SmartContextPanel
           isVisible={contextPanel().isVisible}
           location={contextPanel().location}
           position={contextPanel().position}
           onClose={handleCloseContextPanel}
           onMoveTo={handleQuickMove}
           onGetInfo={(location) => console.log('獲取信息:', location)}
-        />
+        /> */}
 
         {/* Modal Panels - 保留舊組件作為備用 */}
         <div class="fixed inset-0 pointer-events-none z-50">
