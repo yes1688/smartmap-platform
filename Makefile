@@ -37,9 +37,11 @@ dev:
 	@echo "🚀 啟動開發環境（支援熱重載）..."
 	podman-compose -f podman-compose.dev.yml up -d
 	@echo "✅ 開發環境已啟動"
-	@echo "📍 訪問網址: http://localhost:7003"
-	@echo "📍 後端 API: http://localhost:8080"
-	@echo "📍 前端開發: http://localhost:3000"
+	@echo "📍 統一訪問網址: http://localhost:7003"
+	@echo "   - 前端應用: http://localhost:7003/"
+	@echo "   - 後端 API: http://localhost:7003/api/v1"
+	@echo "   - WebSocket: ws://localhost:7003/ws"
+	@echo "   - 健康檢查: http://localhost:7003/health"
 
 dev-down:
 	@echo "🛑 停止開發環境..."

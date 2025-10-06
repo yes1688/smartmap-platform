@@ -2,9 +2,9 @@
 
 ## 🎯 專案概述
 **專案名稱**: 智慧空間平台 (Intelligent Spatial Platform)
-**技術棧**: Go + CesiumJS + PostgreSQL + Ollama + WebSocket
-**業務領域**: 3D 地圖視覺化、AI 語音互動、遊戲化教育平台
-**最後更新**: 2025-09-14
+**技術棧**: Go + SolidJS + Deck.gl + MapLibre GL + PostgreSQL + Ollama + WebSocket
+**業務領域**: 3D 地圖視覺化、AI 語音互動、智能空間控制台
+**最後更新**: 2025-10-06
 **管理員**: 開發團隊
 
 ## 📊 當前狀態總覽
@@ -59,11 +59,12 @@
 - **GORM** - ORM 資料庫操作
 
 ### 前端技術棧
-- **CesiumJS** - 3D 地圖渲染引擎
-- **WebRTC** - 語音識別 API
+- **SolidJS 1.8** - 響應式 UI 框架
+- **Deck.gl + MapLibre GL** - 3D 地圖渲染引擎（已移除 CesiumJS）
+- **TailwindCSS** - 樣式框架
+- **Vite** - 構建工具
+- **Web Speech API** - 語音識別
 - **WebSocket** - 即時通訊
-- **Vanilla JavaScript** - 原生前端開發
-- **SolidJS** - 新前端框架 (實驗性)
 
 ### 基礎設施
 - **Podman + Podman Compose** - 容器化部署
@@ -73,14 +74,17 @@
 ## 🎯 專案核心功能
 
 ### ✅ 已實現功能
-- 🗺️ **3D 地圖視覺化**: CesiumJS 高品質 3D 地球儀
-- 🤖 **AI 智能對話**: Ollama 本地 LLM 整合
-- 🎤 **語音控制**: 繁體中文語音識別與合成
-- 🎮 **互動遊戲**: 物品收集、分數系統與等級進階
-- 🏛️ **歷史景點**: 台灣歷史文化景點自動介紹
-- ⚡ **即時通訊**: WebSocket 多人互動支援
-- 🐳 **容器化部署**: Podman 容器編排
+- 🗺️ **3D 地圖視覺化**: Deck.gl + MapLibre GL，30度傾斜視角 + ESRI 地形圖
+- 🤖 **雙 AI 引擎**: Ollama（本地）+ OpenRouter（雲端）可切換
+- 🎤 **雙語音系統**: Chrome Web Speech API + SpeechEar 可切換
+- 🎯 **智能語音球**: 視覺化語音控制介面
+- 🔍 **智能搜尋系統**: 快速地點搜尋
+- 🎮 **遊戲系統**: 玩家管理、分數系統、等級進階
+- 🏛️ **歷史景點**: 台灣文化景點自動介紹
+- ⚡ **即時通訊**: WebSocket 雙向通訊
+- 🐳 **容器化部署**: Podman 開發/生產環境分離，支援熱重載
 - 📍 **空間資料庫**: PostGIS 地理資訊查詢
+- 🎨 **Glass Morphism**: 現代化玻璃擬態設計系統
 
 ### 🚀 開發中功能
 - 用戶註冊與登入系統
@@ -97,20 +101,38 @@
 ## 📈 專案統計
 
 ### 🔢 程式碼指標
-- **程式語言**: Go, JavaScript, HTML, CSS
-- **檔案總數**: 50+ 檔案
-- **程式碼行數**: 5000+ 行
-- **容器服務**: 4 個主要服務
-- **API 端點**: 12+ REST API
+- **程式語言**: Go, TypeScript, HTML, CSS
+- **後端代碼**: 18 個 Go 檔案，3,004 行
+- **前端代碼**: 30+ 個 TS/TSX 檔案，9,546 行
+- **容器服務**: 4 個主要服務（Backend, Frontend, PostgreSQL, Nginx）
+- **API 端點**: 20+ REST API（已模組化：ai, game, geo, voice handlers）
 
 ### 📊 功能完成度
-- **後端 API**: 80% 完成
-- **3D 地圖**: 85% 完成
-- **AI 對話**: 70% 完成
-- **語音控制**: 75% 完成
-- **遊戲系統**: 60% 完成
-- **部署配置**: 90% 完成
+- **後端 API**: 85% 完成（已模組化）
+- **3D 地圖**: 90% 完成（Deck.gl + MapLibre GL）
+- **AI 對話**: 85% 完成（雙引擎系統）
+- **語音控制**: 85% 完成（雙語音系統 + 智能語音球）
+- **遊戲系統**: 70% 完成
+- **部署配置**: 95% 完成（開發/生產環境分離）
+- **前端組件**: 80% 完成（已分類模組化）
 
 ---
 
-*最後更新: 2025-09-14 | 系統版本: v2.0 | 文檔管理員: 開發團隊*
+## 📈 近期重大更新 (2025-09-30 ~ 2025-10-06)
+
+### ✅ 已完成的架構改進
+- **API Handlers 模組化**: 拆分成 handlers_ai.go, handlers_game.go, handlers_geo.go, handlers_voice.go
+- **前端組件分類**: 組件已分類到 ai/, map/, game/, layout/ 等目錄
+- **技術棧升級**: CesiumJS → Deck.gl + MapLibre GL
+- **雙 AI 引擎**: 支援 Ollama 和 OpenRouter 切換
+- **雙語音系統**: Chrome Web Speech API + SpeechEar
+- **容器化優化**: 開發環境支援熱重載
+
+### 🚀 技術指標
+- **測試覆蓋率**: 23%（持續改進中）
+- **程式碼總規模**: ~12,550 行（不含依賴）
+- **文檔完整度**: 15+ Markdown 文件
+
+---
+
+*最後更新: 2025-10-06 | 系統版本: v1.0 | 文檔管理員: 開發團隊*
