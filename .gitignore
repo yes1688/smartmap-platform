@@ -9,12 +9,22 @@ build/
 */dist/
 */build/
 
-# Environment variables
+# Environment variables (包含所有可能的 .env 檔案)
 .env
+.env.*
+!.env.example
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
+web/.env
+web/.env.*
+!web/.env.example
+*.env
+!*.env.example
 
 # Logs
 logs
