@@ -1,6 +1,6 @@
 import { Component, onMount, createEffect, createSignal, onCleanup } from 'solid-js';
 import { Deck } from '@deck.gl/core';
-import { IconLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { IconLayer, ScatterplotLayer, TextLayer, ColumnLayer } from '@deck.gl/layers';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import { SimpleMeshLayer } from '@deck.gl/mesh-layers';
 import { registerLoaders } from '@loaders.gl/core';
@@ -160,7 +160,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
     ];
   };
 
-  // 創建附近地點圖層（使用 IconLayer 顯示標記圖標）
+  // 創建附近地點圖層（使用 3D 立體指針標記）
   const createNearbyLocationsLayer = () => {
     const nearbyLocations = gameComputed.nearbyLocations;
     console.log('📍 createNearbyLocationsLayer called, locations count:', nearbyLocations.length);
@@ -169,7 +169,7 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
       return [];
     }
 
-    console.log('📍 Creating nearby location layers:', nearbyLocations.length);
+    console.log('📍 Creating 3D pin markers for nearby locations:', nearbyLocations.length);
 
     // Debug: 檢查第一個地點的座標
     if (nearbyLocations.length > 0) {
@@ -182,26 +182,44 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
       });
     }
 
+    const PIN_HEIGHT = 30; // 指針杆高度（米）
+    const PIN_RADIUS = 3;  // 指針杆半徑（米）
+
     return [
-      // 🎯 使用 ScatterplotLayer 顯示實心圓點標記
+      // 1️⃣ 地面陰影圓圈 - 提供深度感
       new ScatterplotLayer({
-        id: 'nearby-locations-icons',
+        id: 'nearby-locations-shadow',
         data: nearbyLocations,
         getPosition: (d: any) => [d.longitude, d.latitude, 0],
-        getRadius: 10,  // 實心圓點半徑
-        radiusUnits: 'pixels',
-        getFillColor: [255, 50, 50, 255], // 紅色實心
-        getLineColor: [255, 255, 255, 255], // 白色外框
-        lineWidthMinPixels: 2,
-        stroked: true,
+        getRadius: 8,
+        radiusUnits: 'meters',
+        getFillColor: [0, 0, 0, 100], // 半透明黑色陰影
+        stroked: false,
         filled: true,
+        pickable: false,
+        updateTriggers: {
+          getPosition: nearbyLocations.map((d: any) => [d.latitude, d.longitude])
+        }
+      }),
+
+      // 2️⃣ 3D 指針杆 - 使用 ColumnLayer 創建立體柱體
+      new ColumnLayer({
+        id: 'nearby-locations-pins',
+        data: nearbyLocations,
+        diskResolution: 12, // 圓柱解析度（越高越圓滑）
+        radius: PIN_RADIUS,
+        extruded: true,
+        wireframe: false,
+        filled: true,
+        getPosition: (d: any) => [d.longitude, d.latitude, 0],
+        getElevation: PIN_HEIGHT,
+        getFillColor: [234, 67, 53, 255], // Google Maps 紅色 (#EA4335)
         pickable: true,
         autoHighlight: true,
-        highlightColor: [255, 140, 0, 255], // Hover 時變成橘色
+        highlightColor: [255, 140, 0, 255], // Hover 時變橘色
         onClick: (info: any) => {
           if (info.object) {
-            console.log('📍 Clicked nearby location:', info.object.name);
-            // 在點擊時顯示詳細資訊（彈出窗或側邊欄）
+            console.log('📍 Clicked 3D pin:', info.object.name);
             if (props.onHistoricalSiteClick) {
               props.onHistoricalSiteClick(info.object);
             }
@@ -219,32 +237,62 @@ const DeckGLMap: Component<DeckGLMapProps> = (props) => {
         }
       }),
 
-      // 📝 文字標籤 - 簡潔版
+      // 3️⃣ 指針頂部圓球 - 立體標記頭
+      new ScatterplotLayer({
+        id: 'nearby-locations-pin-head',
+        data: nearbyLocations,
+        getPosition: (d: any) => [d.longitude, d.latitude, PIN_HEIGHT], // 懸浮在指針杆頂端
+        getRadius: 6,
+        radiusUnits: 'meters',
+        getFillColor: [234, 67, 53, 255], // Google Maps 紅色
+        getLineColor: [255, 255, 255, 255], // 白色邊框
+        lineWidthMinPixels: 2,
+        stroked: true,
+        filled: true,
+        pickable: true,
+        autoHighlight: true,
+        highlightColor: [255, 140, 0, 255],
+        onClick: (info: any) => {
+          if (info.object) {
+            console.log('📍 Clicked pin head:', info.object.name);
+            if (props.onHistoricalSiteClick) {
+              props.onHistoricalSiteClick(info.object);
+            }
+          }
+        },
+        updateTriggers: {
+          getPosition: nearbyLocations.map((d: any) => [d.latitude, d.longitude])
+        }
+      }),
+
+      // 4️⃣ 文字標籤 - 懸浮在指針上方
       new TextLayer({
         id: 'nearby-locations-labels',
         data: nearbyLocations,
-        getPosition: (d: any) => [d.longitude, d.latitude, 0],
+        getPosition: (d: any) => [d.longitude, d.latitude, PIN_HEIGHT + 8], // 在指針頂端上方
         getText: (d: any) => {
-          // 如果名稱太長，截斷並加上省略號
           const name = d.name || '';
-          return name.length > 10 ? name.substring(0, 10) + '...' : name;
+          return name.length > 12 ? name.substring(0, 12) + '...' : name;
         },
-        getSize: 12,
+        getSize: 14,
         getColor: [255, 255, 255],
-        getPixelOffset: [0, -20], // 移到圖標上方（圓點較小，距離調近）
-        backgroundColor: [50, 50, 50, 200],
-        backgroundPadding: [4, 2],
-        fontFamily: '"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", "Apple LiGothic Medium", sans-serif',
+        backgroundColor: [50, 50, 50, 220],
+        backgroundPadding: [6, 3],
+        fontFamily: '"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif',
         fontWeight: '700',
-        characterSet: 'auto',  // 自動載入所需字符
+        characterSet: 'auto',
         fontSettings: {
-          sdf: false  // 使用非 SDF 渲染以支援中文
+          sdf: false
         },
         pickable: false,
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'bottom',
-        outlineWidth: 1,
-        outlineColor: [0, 0, 0, 180]
+        outlineWidth: 2,
+        outlineColor: [0, 0, 0, 200],
+        billboard: true, // 讓文字始終面向相機
+        updateTriggers: {
+          getPosition: nearbyLocations.map((d: any) => [d.latitude, d.longitude])
+        }
       })
     ];
   };
