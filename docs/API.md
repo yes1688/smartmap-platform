@@ -1,31 +1,42 @@
 # API 文檔
 
+> 📅 最後更新：2025-10-06
+>
+> ⚠️ 本文檔僅列出實際實現的 API 端點
+
 ## REST API 端點
 
-### 遊戲相關
+### 🎮 遊戲相關
 ```
-GET    /api/v1/game/status       # 取得遊戲狀態
+GET    /api/v1/game/status       # 取得玩家遊戲狀態（需要 playerId 參數）
+GET    /api/v1/game/players      # 取得所有玩家
+GET    /api/v1/game/sessions     # 取得所有遊戲會話
+POST   /api/v1/game/sessions     # 創建新遊戲會話
 POST   /api/v1/game/collect      # 收集物品
-POST   /api/v1/game/move         # 移動玩家
+POST   /api/v1/game/move         # 移動玩家（有速率限制）
 ```
 
-### 地理位置
+### 🗺️ 地理位置
 ```
 GET    /api/v1/locations         # 取得所有位置
 POST   /api/v1/locations         # 新增位置
 GET    /api/v1/historical-sites  # 取得歷史景點
+POST   /api/v1/places/search     # Google Places API 搜尋（有速率限制）
 ```
 
-### AI 和語音
+### 🤖 AI 和語音
 ```
-POST   /api/v1/voice/process     # 處理語音輸入
-POST   /api/v1/ai/chat          # AI 對話
-POST   /api/v1/ai/movement       # AI 控制移動
-POST   /api/v1/ai/chat-movement  # 對話加移動
-GET    /api/v1/ai/movement-stats # 移動統計
+POST   /api/v1/voice/process     # 處理語音輸入（有速率限制）
+POST   /api/v1/voice/command     # 統一語音指令處理器（有速率限制）
+POST   /api/v1/ai/chat           # AI 對話，可自動處理移動指令（有速率限制）
 ```
 
-### 系統
+### 🔧 除錯（嚴格速率限制）
+```
+POST   /api/v1/debug/movement    # 除錯移動功能
+```
+
+### 🏥 系統
 ```
 GET    /health                   # 健康檢查
 ```
