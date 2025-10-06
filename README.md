@@ -221,10 +221,13 @@ curl "http://localhost:7003/api/v1/game/status?playerId=user123"
 - **[快速測試指南](docs/guides/QUICK_START_TESTING_GUIDE.md)** - 新手測試教學
 - **[Podman 容器指南](docs/guides/PODMAN_GUIDE.md)** - 容器管理完整說明
 - **[環境配置指南](docs/guides/ENVIRONMENT_SETUP_GUIDE.md)** - 多環境管理
+- **[統一端口指南](docs/guides/UNIFIED_PORT_GUIDE.md)** - 統一 7003 端口架構說明
 
 ### 分析報告
-- **[第一階段完成報告](docs/reports/PHASE_1_COMPLETION_REPORT.md)** - 最新改善成果
-- **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 專案結構分析
+- **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 專案結構分析（已更新至 2025-10-06）
+- **[第一階段完成報告](docs/reports/PHASE_1_COMPLETION_REPORT.md)** - API 模組化與組件分類成果
+- **[系統完成報告](docs/reports/SYSTEM_COMPLETION_REPORT.md)** - 智能系統集成報告
+- **[專案檢視與改善](docs/reports/PROJECT_REVIEW_AND_IMPROVEMENTS.md)** - 全面檢視與建議
 - **[測試框架報告](docs/reports/TEST_SETUP_REPORT.md)** - 測試系統說明
 
 ## 🧪 測試
