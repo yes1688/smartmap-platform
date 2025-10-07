@@ -1,335 +1,640 @@
 # 智慧空間平台 (Intelligent Spatial Platform)
 
-> 一個結合 AI、語音控制和 3D 地圖的智慧空間平台
+[![Go 版本](https://img.shields.io/badge/Go-1.23+-00ADD8?style=flat-square&logo=go)](https://golang.org/)
+[![SolidJS](https://img.shields.io/badge/SolidJS-1.8+-2C4F7C?style=flat-square&logo=solid)](https://solidjs.com/)
+[![Deck.gl](https://img.shields.io/badge/Deck.gl-Latest-0E7FC0?style=flat-square)](https://deck.gl/)
+[![授權](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
+[![歡迎 PR](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 
-[![Go Version](https://img.shields.io/badge/Go-1.23+-blue.svg)](https://golang.org/)
-[![SolidJS](https://img.shields.io/badge/SolidJS-1.8+-green.svg)](https://solidjs.com/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+> 個人開發的企業級地理空間平台，整合 AI 智能互動、語音控制與 3D 視覺化技術，提供智慧型位置服務解決方案。
 
-## 🌟 核心功能
+---
 
-### ✅ 已實現功能
+## 目錄
 
-#### 🗺️ 地圖系統
-- **3D 地形視覺化**: Deck.gl + MapLibre GL，30度傾斜視角
-- **ESRI 地形底圖**: 高品質地形圖層
-- **即時位置追蹤**: 玩家位置實時更新
-- **地點標記**: 自定義標記與資訊視窗
+- [專案概述](#專案概述)
+- [核心功能](#核心功能)
+- [系統架構](#系統架構)
+- [快速開始](#快速開始)
+  - [環境需求](#環境需求)
+  - [安裝步驟](#安裝步驟)
+  - [環境配置](#環境配置)
+- [使用說明](#使用說明)
+- [API 文檔](#api-文檔)
+- [開發指南](#開發指南)
+- [部署指南](#部署指南)
+- [參與貢獻](#參與貢獻)
+- [資訊安全](#資訊安全)
+- [授權條款](#授權條款)
+- [技術支援](#技術支援)
 
-#### 🤖 AI 智能系統
-- **雙 AI 引擎**: Ollama（本地）+ OpenRouter（雲端）可切換
-- **語音識別**: Chrome Web Speech API + SpeechEar 雙系統
-- **智能對話**: 中文對話與語境理解
-- **移動指令**: AI 解析語音移動指令（如「移動兔子到台北101」）
-- **意圖識別**: 支援搜尋、移動、描述、推薦等意圖
-- **速率限制**: 防止 API 濫用（可配置每日限制）
+---
 
-#### 🎮 遊戲系統
-- **玩家管理**: 角色創建、位置追蹤
-- **分數系統**: 物品收集、經驗值、等級進階
-- **遊戲會話**: 單人遊戲會話記錄
+## 專案概述
 
-#### 🌐 地理服務
-- **Google Places API**: 台灣地點精準搜尋
-- **地理編碼**: 地址 ↔ 座標轉換
-- **附近地點**: 尋找周邊景點與設施
-- **歷史景點**: 台灣文化景點自動介紹
+**智慧空間平台**是一個**個人獨立開發**的生產等級地理空間應用系統，運用先進技術提供智慧型位置服務。採用 Go 與 SolidJS 開發，具備雙 AI 引擎（本地與雲端）、進階語音控制與精美的 3D 地圖視覺化功能。
 
-#### ⚡ 系統架構
-- **WebSocket**: 即時雙向通訊
-- **RESTful API**: 完整的 REST API
-- **容器化部署**: Podman Compose 統一管理
-- **熱重載開發**: 前後端代碼自動重載
-- **健康檢查**: 服務健康狀態監控
+> 💡 **開發背景**：本專案由一人從零開始設計、開發與維護，涵蓋前端、後端、資料庫、AI 整合、容器化部署等全棧技術。
 
-#### 🎨 前端特色
-- **智能語音球**: 視覺化語音控制介面
-- **手勢引擎**: 觸控手勢支援（基礎實現）
-- **性能監控**: 即時性能追蹤
-- **Glass Morphism**: 現代化玻璃擬態設計
-- **響應式設計**: 適配各種螢幕尺寸
+### 平台特色
 
-### 🚧 計劃中功能
+- **🤖 雙 AI 架構**：本地（Ollama）與雲端（OpenRouter）AI 處理無縫切換
+- **🗣️ 進階語音控制**：自然語言指令與意圖識別
+- **🌍 專業級 3D 地圖**：Deck.gl + MapLibre GL 搭配 ESRI 地形底圖
+- **⚡ 即時通訊**：WebSocket 驅動的即時更新
+- **🏢 企業就緒**：容器化部署，內建健康檢查與監控
+- **🌐 生產驗證**：注重可擴展性與效能的設計
 
-- **智能搜尋系統**: 快速地點搜尋（組件已開發，待整合）
-- **上下文面板**: 動態資訊展示（組件已開發，待整合）
-- **多人即時互動**: WebSocket 基礎已建立，待實現多人同步
-- **物品生成系統**: 遊戲物品自動生成機制
-- **排行榜系統**: 玩家成績排名
-- **社交系統**: 玩家互動、好友系統
-- **成就系統**: 遊戲成就與獎勵
-- **離線支援**: PWA 離線功能
+---
 
-### 📊 技術指標
-- **測試覆蓋率**: 23% (持續改進中)
-- **API 端點**: 20+ REST API
-- **前端組件**: 30+ SolidJS 組件
-- **後端服務**: 5 個核心服務模組
+## 核心功能
 
-## 🚀 快速開始
+### 主要能力
 
-### 前置需求
+#### 🗺️ 地理空間視覺化
+- **3D 地形渲染**：30° 傾斜視角搭配高品質 ESRI 底圖
+- **即時位置追蹤**：亞秒級位置更新
+- **互動式 3D 標記**：Google Maps 風格的立體指針標記
+- **自訂圖層**：支援自訂資料圖層與視覺化
 
-- **Podman** 4.0+
-- **Go** 1.23+ (本機開發)
-- **Node.js** 20+ (本機開發)
+#### 🤖 AI 與自然語言處理
+- **雙 AI 引擎**：
+  - 本地：Ollama（Gemma 3 12B-IT）
+  - 雲端：OpenRouter（Gemma 2 27B-IT）
+- **語音識別**：雙系統架構（Chrome Web Speech + SpeechEar）
+- **意圖分類**：支援搜尋、導航、描述、推薦等意圖
+- **多語言支援**：繁體中文、英文、日文
+- **速率限制**：內建 API 保護機制與可配置限制
 
-### 一鍵啟動
+#### 🌐 位置智慧服務
+- **Google Places 整合**：台灣地區精準位置搜尋
+- **地理編碼服務**：地址 ↔ 座標雙向轉換
+- **鄰近搜尋**：尋找周邊景點設施
+- **歷史景點資料庫**：精選文化地標與詳細描述
+
+#### ⚡ 效能與可擴展性
+- **WebSocket 協定**：全雙工即時通訊
+- **RESTful API**：20+ 個文檔化端點
+- **容器編排**：Podman Compose 多服務管理
+- **熱重載**：開發模式即時程式碼重載
+- **健康監控**：完整的健康檢查端點
+
+### 技術規格
+
+| 組件 | 技術 | 用途 |
+|------|------|------|
+| **後端** | Go 1.23 + Gin | 高效能 API 伺服器 |
+| **前端** | SolidJS 1.8 | 響應式 UI 框架 |
+| **資料庫** | PostgreSQL 16 + PostGIS | 空間資料儲存 |
+| **3D 引擎** | Deck.gl + MapLibre GL | WebGL 地圖渲染 |
+| **AI（本地）** | Ollama | 隱私優先的本地推論 |
+| **AI（雲端）** | OpenRouter | 可擴展的雲端 AI |
+| **容器** | Podman | 安全容器化 |
+| **反向代理** | Nginx | 生產級路由 |
+
+---
+
+## 系統架構
+
+### 架構概覽
+
+```mermaid
+graph TB
+    subgraph 客戶端["🖥️ 客戶端層 (Port 7003)"]
+        VoiceOrb["🎤 語音控制球<br/>(SolidJS)"]
+        Map3D["🗺️ 3D 地圖<br/>(Deck.gl + MapLibre)"]
+        AIChat["💬 AI 對話<br/>(SolidJS)"]
+    end
+
+    subgraph 代理層["🔀 反向代理層"]
+        Nginx["Nginx<br/>(Port 7003)"]
+    end
+
+    subgraph 應用層["⚙️ 應用服務層"]
+        Backend["Go 後端<br/>(Gin + Port 8080)"]
+        WebSocket["WebSocket 處理器"]
+        Static["靜態資源"]
+    end
+
+    subgraph 資料層["💾 資料與服務層"]
+        DB["PostgreSQL + PostGIS<br/>(空間資料庫)"]
+        OllamaAI["Ollama<br/>(本地 AI)"]
+        GoogleAPI["Google Places API<br/>(位置搜尋)"]
+        OpenRouter["OpenRouter<br/>(雲端 AI)"]
+    end
+
+    VoiceOrb --> Nginx
+    Map3D --> Nginx
+    AIChat --> Nginx
+
+    Nginx --> Backend
+    Nginx --> WebSocket
+    Nginx --> Static
+
+    Backend --> DB
+    Backend --> OllamaAI
+    Backend --> GoogleAPI
+    Backend --> OpenRouter
+    WebSocket --> Backend
+
+    style 客戶端 fill:#e1f5ff
+    style 代理層 fill:#fff3e0
+    style 應用層 fill:#f3e5f5
+    style 資料層 fill:#e8f5e9
+```
+
+### 資料流程
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 使用者
+    participant V as 🎤 語音控制球
+    participant N as 🔀 Nginx
+    participant B as ⚙️ Go 後端
+    participant AI as 🤖 AI 引擎
+    participant G as 🌐 Google Places
+    participant D as 💾 PostGIS
+    participant M as 🗺️ 3D 地圖
+
+    U->>V: 語音指令「附近有什麼景點」
+    V->>N: WebSocket 傳送語音
+    N->>B: 轉發至後端
+    B->>AI: 意圖分析 (Ollama/OpenRouter)
+    AI-->>B: 返回意圖：搜尋附近景點
+    B->>G: 查詢 Google Places API
+    G-->>B: 返回景點列表
+    B->>D: 儲存至空間資料庫
+    D-->>B: 確認儲存
+    B-->>N: 返回景點資料 + 座標
+    N-->>M: WebSocket 推送更新
+    M->>M: Deck.gl 渲染 3D 指針標記
+    M-->>U: 顯示景點於地圖
+```
+
+### 核心技術棧
+
+| 層級 | 技術 | 用途 |
+|------|------|------|
+| **前端** | SolidJS 1.8 | 響應式 UI 框架 |
+| **3D 引擎** | Deck.gl + MapLibre GL | WebGL 地圖渲染 |
+| **後端** | Go 1.23 + Gin | 高效能 API 伺服器 |
+| **資料庫** | PostgreSQL 16 + PostGIS | 空間資料儲存 |
+| **AI（本地）** | Ollama (Gemma 3 12B) | 隱私優先的本地推論 |
+| **AI（雲端）** | OpenRouter (Gemma 2 27B) | 可擴展的雲端 AI |
+| **容器** | Podman + Compose | 安全容器化部署 |
+| **代理** | Nginx | 生產級反向代理 |
+
+---
+
+## 快速開始
+
+### 環境需求
+
+**必要項目：**
+- [Podman](https://podman.io/) 4.0 或更新版本
+- [Podman Compose](https://github.com/containers/podman-compose) 1.0+
+- [Make](https://www.gnu.org/software/make/)（通常已預裝）
+
+**選用項目（本機開發）：**
+- [Go](https://golang.org/) 1.23+
+- [Node.js](https://nodejs.org/) 20+
+- [Ollama](https://ollama.ai/)（本地 AI 使用）
+
+### 安裝步驟
 
 ```bash
-# 1. Clone 專案
+# 複製專案
 git clone https://github.com/yes1688/smartmap-platform.git
 cd smartmap-platform
 
-# 2. 配置環境變數
+# 複製環境變數範本
 cp .env.example .env
-# 編輯 .env 填入你的 API Keys
 
-# 3. 啟動（二選一）
+# 編輯 .env 填入您的 API Keys
+# 必填：GOOGLE_PLACES_API_KEY、OPENROUTER_API_KEY（如使用雲端 AI）
+nano .env
 
-# 🔧 開發環境（熱重載）
-make dev
-
-# 🚀 生產環境（優化構建）
-make prod
+# 啟動平台（擇一）
+make dev    # 開發模式（支援熱重載）
+make prod   # 生產模式（最佳化建置）
 ```
 
-### 訪問地址
+### 環境配置
 
-**所有環境統一使用**: http://localhost:7003
+#### 環境變數設定
 
-| 環境 | 說明 | 特點 |
-|-----|------|-----|
-| 開發環境 | `make dev` | 熱重載 ⚡ |
-| 生產環境 | `make prod` | 優化構建 🚀 |
+在專案根目錄建立 `.env` 檔案：
 
-**統一路由結構**：
-- 前端應用：`http://localhost:7003/`
-- API 端點：`http://localhost:7003/api/v1`
-- WebSocket：`ws://localhost:7003/ws`
-- 健康檢查：`http://localhost:7003/health`
-
-✅ **無論哪個環境，永遠都是 7003！**
-
-## 📋 管理指令
-
-### 查看所有指令
 ```bash
-make help           # 顯示所有可用指令
+# AI 提供者選擇
+AI_PROVIDER=openrouter              # 選項：ollama | openrouter
+
+# Google 服務
+GOOGLE_PLACES_API_KEY=您的金鑰      # 位置搜尋必填
+
+# 雲端 AI (OpenRouter)
+OPENROUTER_API_KEY=您的金鑰         # AI_PROVIDER=openrouter 時必填
+OPENROUTER_MODEL=google/gemma-2-27b-it:free
+
+# 本地 AI (Ollama)
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=gemma3:12b-it-qat
+
+# 資料庫
+DB_PASSWORD=您的安全密碼             # 請更改預設值
+
+# 安全性
+JWT_SECRET=您的JWT密鑰              # 請生成安全密鑰
 ```
 
-### 開發環境（最常用）
-```bash
-make dev            # 啟動開發環境（熱重載）
-make dev-down       # 停止
-make dev-logs       # 查看日誌
-make dev-restart    # 重啟
-make dev-build      # 重新構建容器
+**⚠️ 安全提醒**：請勿將 `.env` 檔案提交至版本控制系統。請使用 `.env.example` 作為範本。
+
+#### 取得 API 金鑰
+
+1. **Google Places API**：
+   - 前往 [Google Cloud Console](https://console.cloud.google.com/)
+   - 建立專案並啟用「Places API (Text Search)」
+   - 產生 API 金鑰
+   - 建議：設定 IP 或網域限制
+
+2. **OpenRouter API**（雲端 AI 使用）：
+   - 前往 [OpenRouter](https://openrouter.ai/keys)
+   - 註冊並產生 API 金鑰
+   - 免費方案：每分鐘 1 次請求
+
+---
+
+## 使用說明
+
+### 存取平台
+
+啟動後，開啟瀏覽器前往：
+
+```
+http://localhost:7003
 ```
 
-### 生產環境
-```bash
-make prod           # 啟動生產環境
-make prod-down      # 停止
-make prod-logs      # 查看日誌
-make prod-restart   # 重啟
-make prod-build     # 重新構建容器
+所有服務（開發與生產環境）統一使用 **7003** 埠號。
+
+### 語音指令
+
+平台支援自然語言語音指令：
+
+**導航指令**
 ```
-
-### 其他指令
-```bash
-make build-frontend # 構建前端靜態檔案
-make status         # 查看容器狀態
-make clean          # 清理所有容器和資料卷
-```
-
-## 🏗️ 技術架構
-
-### 後端
-- **Go 1.23** + **Gin** - Web 框架
-- **PostgreSQL** + **PostGIS** - 空間資料庫
-- **Ollama** / **OpenRouter** - AI 服務（可切換）
-- **WebSocket** - 即時通訊
-- **GORM** - ORM
-
-### 前端
-- **SolidJS 1.8** - 響應式框架
-- **Deck.gl** + **MapLibre GL** - 地圖引擎
-- **TailwindCSS** - 樣式
-- **Vite** - 構建工具
-
-### DevOps
-- **Podman** + **Podman Compose** - 容器化
-- **GitHub Actions** - CI/CD
-- **Nginx** - 反向代理（生產環境）
-
-## 💡 使用範例
-
-### 語音控制指令
-
-智能系統支援自然語言指令，以下是一些範例：
-
-**移動指令**
-```
-"移動到台北101"
-"去高雄"
-"帶我去嘉義市吃火雞肉飯"
+「移動到台北101」
+「Go to Taipei 101」
+「帶我去高雄」
 ```
 
 **搜尋指令**
 ```
-"附近有什麼好玩的"
-"搜尋台南美食"
-"找找看博物館"
+「附近有什麼景點」
+「搜尋附近的餐廳」
+「找找看博物館」
 ```
 
-**查詢指令**
+**資訊查詢**
 ```
-"介紹這個地方"
-"這裡有什麼歷史"
-"我的遊戲統計"
+「介紹這個地方」
+「告訴我關於這個位置」
+「這裡有什麼歷史」
 ```
 
 ### API 使用範例
 
+**健康檢查**
 ```bash
-# 健康檢查
 curl http://localhost:7003/health
+```
 
-# AI 對話
-curl -X POST http://localhost:7003/api/v1/chat \
+**AI 對話**
+```bash
+curl -X POST http://localhost:7003/api/v1/ai/chat \
   -H "Content-Type: application/json" \
   -d '{"message":"介紹台北101","playerId":"user123"}'
+```
 
-# 搜尋地點
-curl -X POST http://localhost:7003/api/v1/locations/search \
+**位置搜尋**
+```bash
+curl -X POST http://localhost:7003/api/v1/places/search \
   -H "Content-Type: application/json" \
   -d '{"query":"台北101"}'
+```
 
-# 獲取玩家狀態
+**玩家狀態**
+```bash
 curl "http://localhost:7003/api/v1/game/status?playerId=user123"
 ```
 
-## 📚 文檔
-
-### 核心文檔
-- **[開發指南](docs/DEVELOPMENT.md)** - 完整開發工作流程
-- **[API 文檔](docs/API.md)** - REST API 和 WebSocket 規格
-- **[問題排除](docs/TROUBLESHOOTING.md)** - 常見問題和解決方案
-
-### 操作指南
-- **[快速測試指南](docs/guides/QUICK_START_TESTING_GUIDE.md)** - 新手測試教學
-- **[Podman 容器指南](docs/guides/PODMAN_GUIDE.md)** - 容器管理完整說明
-- **[環境配置指南](docs/guides/ENVIRONMENT_SETUP_GUIDE.md)** - 多環境管理
-- **[統一端口指南](docs/guides/UNIFIED_PORT_GUIDE.md)** - 統一 7003 端口架構說明
-
-### 分析報告
-- **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 專案結構分析（已更新至 2025-10-06）
-- **[第一階段完成報告](docs/reports/PHASE_1_COMPLETION_REPORT.md)** - API 模組化與組件分類成果
-- **[系統完成報告](docs/reports/SYSTEM_COMPLETION_REPORT.md)** - 智能系統集成報告
-- **[專案檢視與改善](docs/reports/PROJECT_REVIEW_AND_IMPROVEMENTS.md)** - 全面檢視與建議
-- **[測試框架報告](docs/reports/TEST_SETUP_REPORT.md)** - 測試系統說明
-
-## 🧪 測試
-
-```bash
-# 運行所有測試
-podman exec spatial-backend-dev go test ./internal/... -v -cover
-```
-
-**當前測試覆蓋率**: 23% (持續改進中)
-
-## 🤝 開發工作流程
-
-```bash
-# 1. 啟動開發環境
-make dev
-
-# 2. 修改代碼（自動重載）
-
-# 3. 運行測試
-podman exec spatial-backend-dev go test ./internal/... -v
-
-# 4. 提交前驗證（生產級構建）
-make dev-down
-make prod
-
-# 5. 驗證通過後提交
-git add .
-git commit -m "feat: your feature"
-git push
-```
-
-## 📊 專案統計
-
-### 程式碼規模
-- **後端代碼**: 3,000+ 行 Go
-  - 5 個核心服務模組（AI, Game, Geo, Voice, WebSocket）
-  - 20+ REST API 端點
-  - 5 個 Handler 模組（已模組化）
-- **前端代碼**: 9,500+ 行 TypeScript/TSX
-  - 18+ SolidJS 響應式組件（已分類）
-  - 5 個智能引擎（動畫、手勢、預測、個人化、性能監控）
-  - Glass Morphism 視覺設計系統
-- **測試代碼**: 370+ 行
-- **文檔**: 5,000+ 行 Markdown（已更新至最新狀態）
-
-### 技術指標
-- **測試覆蓋率**: 23% (持續改進中)
-- **容器服務**: 4 個（Backend, Frontend, PostgreSQL, Nginx）
-- **資料庫**: PostgreSQL + PostGIS（空間資料）
-- **API**: RESTful + WebSocket
-- **部署**: 完全容器化，一鍵啟動
-
-### API 端點分類
-- **遊戲 API**: 玩家管理、物品收集、會話管理、統計
-- **AI API**: 對話、移動指令、意圖識別
-- **地理 API**: 地點搜尋、地理編碼、附近地點、歷史景點
-- **語音 API**: 語音識別處理
-- **WebSocket**: 即時雙向通訊
-
-## 🎯 開發哲學
-
-本專案遵循 **Linus Torvalds 實用主義哲學**：
-
-> "Talk is cheap. Show me the code."
->
-> "先讓它運作，再讓它完美"
-
-**核心原則**：
-- ✅ 功能優先於架構
-- ✅ 簡單優於複雜
-- ✅ 實用優於優雅
-- ✅ 漸進式改進
-
-詳見：[CLAUDE.md](CLAUDE.md)
-
-## 📝 版本歷史
-
-### v1.0.0 (2025-10-06)
-- ✅ 完成核心功能開發
-- ✅ 雙 AI 引擎系統（Ollama + OpenRouter）
-- ✅ 雙語音系統（Chrome Web Speech + SpeechEar）
-- ✅ API handlers 模組化（5 個檔案）
-- ✅ 前端組件分類（ai/, map/, game/, layout/）
-- ✅ 建立測試框架（23% 覆蓋率）
-- ✅ 容器化開發環境（支援熱重載）
-- ✅ 文檔系統完整更新
-
-## 📄 授權
-
-MIT License - 詳見 [LICENSE](LICENSE)
-
-## 👥 貢獻
-
-歡迎提交 Issue 和 Pull Request！
+完整 API 文檔請參閱 [API.md](docs/API.md)。
 
 ---
 
-**🎉 現在就開始你的智慧空間之旅！**
+## API 文檔
 
-```bash
-make dev
+平台提供完整的 RESTful API。詳細文檔請見：
+
+📖 **[API 參考文件](docs/API.md)**
+
+### 快速參考
+
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/health` | GET | 健康檢查 |
+| `/api/v1/ai/chat` | POST | AI 對話 |
+| `/api/v1/places/search` | POST | Google Places 搜尋 |
+| `/api/v1/game/status` | GET | 玩家遊戲狀態 |
+| `/api/v1/game/move` | POST | 移動玩家位置 |
+| `/ws` | WebSocket | 即時更新 |
+
+**速率限制**：大部分 AI 與外部 API 端點已啟用速率限制。詳見 [API.md](docs/API.md)。
+
+---
+
+## 開發指南
+
+### 專案結構
+
+```
+smartmap-platform/
+├── cmd/                    # 應用程式進入點
+│   └── server/            # 主伺服器應用程式
+├── internal/              # 私有應用程式碼
+│   ├── ai/               # AI 服務（Ollama + OpenRouter）
+│   ├── game/             # 遊戲邏輯與狀態
+│   ├── geo/              # 地理空間服務
+│   ├── handlers/         # HTTP 處理器（5 個模組）
+│   ├── middleware/       # HTTP 中介軟體
+│   └── voice/            # 語音處理
+├── web/                   # 前端應用程式
+│   └── src/
+│       ├── components/   # SolidJS 組件
+│       │   ├── ai/      # AI 相關 UI
+│       │   ├── map/     # 地圖視覺化
+│       │   ├── game/    # 遊戲 UI
+│       │   └── layout/  # 版面配置組件
+│       └── stores/      # 狀態管理
+├── configs/              # 配置檔案
+├── containers/           # 容器配置
+├── docs/                 # 文檔
+└── Makefile             # 建置自動化
 ```
 
-*智慧空間平台 | 由 Go + SolidJS + AI 驅動 | 2025*
+### 可用指令
+
+```bash
+# 開發環境
+make dev              # 啟動開發環境
+make dev-logs         # 查看開發日誌
+make dev-down         # 停止開發環境
+make dev-restart      # 重啟開發服務
+
+# 生產環境
+make prod             # 啟動生產環境
+make prod-logs        # 查看生產日誌
+make prod-down        # 停止生產環境
+
+# 工具指令
+make status           # 檢查容器狀態
+make clean            # 清理容器與資料卷（⚠️ 破壞性操作）
+make help             # 顯示所有可用指令
+```
+
+### 執行測試
+
+```bash
+# 後端測試
+podman exec spatial-backend-dev go test ./internal/... -v -cover
+
+# 目前測試覆蓋率：23%（持續改進中）
+```
+
+### 開發工作流程
+
+1. **啟動開發環境**
+   ```bash
+   make dev
+   ```
+
+2. **進行修改**
+   - 後端：儲存時自動重載
+   - 前端：Vite HMR 即時更新
+
+3. **執行測試**
+   ```bash
+   podman exec spatial-app go test ./internal/... -v
+   ```
+
+4. **生產環境驗證**
+   ```bash
+   make dev-down
+   make prod
+   # 測試生產版本
+   ```
+
+5. **提交變更**
+   ```bash
+   git add .
+   git commit -m "feat: 您的功能描述"
+   git push origin master
+   ```
+
+---
+
+## 部署指南
+
+### 容器化部署（建議）
+
+本平台設計為使用 Podman Compose 進行容器化部署。
+
+**生產環境部署：**
+
+```bash
+# 1. 複製並配置
+git clone https://github.com/yes1688/smartmap-platform.git
+cd smartmap-platform
+cp .env.example .env
+# 編輯 .env 填入生產環境數值
+
+# 2. 建置並啟動
+make prod
+
+# 3. 驗證健康狀態
+curl http://localhost:7003/health
+```
+
+**環境特定配置：**
+
+- **開發環境**：`podman-compose.dev.yml`（熱重載、除錯日誌）
+- **生產環境**：`podman-compose.yml`（最佳化建置、發布模式）
+
+### 多階段建置流程
+
+生產建置採用多階段 Docker 建置以獲得最佳映像檔大小：
+
+1. **後端建置器**：編譯 Go 二進位檔
+2. **前端建置器**：建置 SolidJS 應用程式
+3. **執行環境**：極簡 Alpine 基礎映像檔
+4. **Nginx**：提供靜態資源與 API 代理
+
+**最終映像檔大小：**
+- 後端：~50MB（Alpine + Go 二進位檔）
+- 前端：~30MB（Alpine + Nginx + 靜態檔案）
+
+### 健康檢查
+
+所有服務皆包含健康檢查配置：
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+  interval: 15s
+  timeout: 5s
+  retries: 3
+```
+
+### 擴展考量
+
+- **資料庫**：PostgreSQL 連線池（最大 100 個連線）
+- **API**：無狀態後端允許水平擴展
+- **WebSocket**：負載平衡時考慮 sticky sessions
+- **AI**：Ollama 可使用 GPU 加速（如可用）
+
+---
+
+## 參與貢獻
+
+我們歡迎社群貢獻！詳情請參閱[貢獻指南](CONTRIBUTING.md)。
+
+### 如何貢獻
+
+1. Fork 本專案
+2. 建立功能分支（`git checkout -b feature/amazing-feature`）
+3. 提交您的變更（`git commit -m 'feat: 新增絕佳功能'`）
+4. 推送至分支（`git push origin feature/amazing-feature`）
+5. 開啟 Pull Request
+
+### 提交規範
+
+我們遵循 [Conventional Commits](https://www.conventionalcommits.org/)：
+
+```
+feat: 新增語音指令
+fix: 修正地圖渲染問題
+docs: 更新 API 文檔
+refactor: 最佳化 AI 服務
+test: 新增地理服務單元測試
+```
+
+### 開發哲學
+
+本專案遵循 **Linus Torvalds 的實用主義方法**：
+
+> 「廢話少說，直接看程式碼。」
+
+- **功能優先**：先讓它運作，再讓它美觀
+- **簡潔性**：避免不必要的抽象
+- **漸進式改進**：小步快跑的工作迭代
+- **效能至上**：不接受效能倒退
+
+詳見 [CLAUDE.md](CLAUDE.md) 的詳細開發指南。
+
+---
+
+## 資訊安全
+
+### 回報安全問題
+
+請將安全漏洞回報至：**[security@your-domain.com]**
+
+**請勿**針對安全性錯誤開啟公開 issue。
+
+### 安全最佳實踐
+
+✅ **已實作：**
+- 基於環境變數的配置（無硬編碼密鑰）
+- `.gitignore` 保護敏感檔案
+- API 速率限制以防濫用
+- 生產部署的 CORS 配置
+- 監控用健康檢查端點
+
+⚠️ **建議事項：**
+- 每 3-6 個月輪換 API 金鑰
+- 在 Google Places API 設定 IP/網域限制
+- 使用強 JWT 密鑰（32+ 字元）
+- 生產環境啟用 HTTPS
+- 監控 API 使用量並設定告警
+
+### 安全稽核
+
+最近安全稽核：**2025-10-07**
+- ✅ Git 歷史中無 API 金鑰
+- ✅ 公開儲存庫中無敏感資料
+- ✅ 所有密鑰使用環境變數
+- ✅ `.env` 檔案已正確忽略
+
+---
+
+## 授權條款
+
+本專案採用 **MIT 授權條款** - 詳見 [LICENSE](LICENSE) 檔案。
+
+```
+MIT License
+
+Copyright (c) 2025 智慧空間平台貢獻者
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files...
+```
+
+---
+
+## 技術支援
+
+### 文檔資源
+
+- 📖 **[開發指南](docs/DEVELOPMENT.md)** - 完整開發工作流程
+- 📖 **[API 參考](docs/API.md)** - REST API 與 WebSocket 規格
+- 📖 **[疑難排解](docs/TROUBLESHOOTING.md)** - 常見問題與解決方案
+- 📖 **[架構分析](docs/reports/ARCHITECTURE_ANALYSIS.md)** - 系統架構詳細說明
+
+### 取得協助
+
+- 🐛 **錯誤回報**：[GitHub Issues](https://github.com/yes1688/smartmap-platform/issues)
+- 💬 **討論區**：[GitHub Discussions](https://github.com/yes1688/smartmap-platform/discussions)
+- 📧 **電子郵件**：[support@your-domain.com]
+
+### 專案統計
+
+- **程式碼行數**：~12,500+
+  - 後端（Go）：3,000+
+  - 前端（TypeScript/TSX）：9,500+
+  - 測試：370+
+- **API 端點**：20+
+- **組件數**：30+ SolidJS 組件
+- **測試覆蓋率**：23%（改進中）
+- **文檔**：5,000+ 行
+
+### 致謝
+
+使用以下優秀的開源專案建置：
+
+- [Go](https://golang.org/) - 後端語言
+- [SolidJS](https://solidjs.com/) - 前端框架
+- [Deck.gl](https://deck.gl/) - WebGL 視覺化
+- [MapLibre GL](https://maplibre.org/) - 地圖渲染
+- [PostgreSQL](https://www.postgresql.org/) - 資料庫
+- [Ollama](https://ollama.ai/) - 本地 AI 推論
+- [OpenRouter](https://openrouter.ai/) - 雲端 AI 平台
+
+---
+
+<div align="center">
+
+**用 ❤️ 為地理空間社群打造**
+
+[⭐ 給專案星星](https://github.com/yes1688/smartmap-platform) | [🐛 回報錯誤](https://github.com/yes1688/smartmap-platform/issues) | [✨ 功能建議](https://github.com/yes1688/smartmap-platform/issues)
+
+</div>
