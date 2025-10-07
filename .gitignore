@@ -142,3 +142,5 @@ Desktop.ini
 
 # Container volumes
 postgres_data/
+# Security reports (may contain sensitive data)
+SECURITY_CLEANUP_REPORT.md
